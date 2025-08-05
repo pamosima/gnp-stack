@@ -124,31 +124,6 @@ topology:
         - grafana/plugins/:/var/lib/grafana/plugins/:ro
       ports:
         - 3000:3000
-    
-    gobmp:
-      kind: linux
-      # image: sbezverk/gobmp:latest
-      image: localhost/gobmp:nats-addstream # waiting for https://github.com/sbezverk/gobmp/pull/266
-      ports:
-        - 5000:5000
-      cmd: |
-        -dump=nats 
-        -nats-server="nats://nats:4222" 
-        -source-port 5000
-      mgmt-ipv4: 192.168.60.254
-
-    clickhouse:
-      kind: linux
-      image: clickhouse/clickhouse-server
-      ports:
-        - 8123:8123 # data
-        - 9000:9000 # ch-tcp
-        - 9363:9363 # metrics
-      binds:
-        - clickhouse/data:/var/lib/clickhouse:rw
-        - clickhouse/logs:/var/log/clickhouse-server:rw
-        - clickhouse/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/:ro
-        # - clickhouse/users.d/:/etc/clickhouse-server/users.d/:rw
 
   links:
     - endpoints: ["leaf1:e1-49", "spine1:e1-1"] # leaf to spine
