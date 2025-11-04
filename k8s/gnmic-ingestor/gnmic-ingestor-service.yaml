@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    service: gnmic-ingestor
+  name: gnmic-ingestor
+spec:
+  ports:
+    - name: "9804"
+      port: 9804
+      targetPort: 9804
+  selector:
+    service: gnmic-ingestor

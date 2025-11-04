@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    service: gnmic-emitter
+  name: gnmic-emitter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: gnmic-emitter
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f compose.yaml
+        kompose.version: 1.37.0 (HEAD)
+      labels:
+        service: gnmic-emitter
+    spec:
+      containers:
+        - args:
+            - --config
+            - /app/gnmic.yaml
+            - --log
+            - subscribe
+          image: ghcr.io/openconfig/gnmic:0.42.0
+          name: gnmic-emitter
+          ports:
+            - containerPort: 9804
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /app/gnmic.yaml
+              name: gnmic-emitter-cm0
+              readOnly: true
+              subPath: gnmic.yaml
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            items:
+              - key: gnmic-emitter.yaml
+                path: gnmic.yaml
+            name: gnmic-emitter-cm0
+          name: gnmic-emitter-cm0

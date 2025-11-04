@@ -1,7 +1,7 @@
 ---
 name: gnp-stack
 mgmt:
-  network: gnp-stack_gnp-mgmt
+  network: gnp-mgmt
   ipv4-subnet: 192.168.60.0/24
 
 topology:

@@ -1,0 +1,172 @@
+replicas: 1
+# Grafana is too dumb for non-failing upgrades: https://github.com/grafana/helm-charts/issues/1184
+deploymentStrategy:
+  type: Recreate
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        disableDeletion: false
+        editable: true
+        folder: ""
+        options:
+          path: /var/lib/grafana/dashboards/default
+        orgId: 1
+        type: file
+      - name: kubernetes
+        orgId: 1
+        folder: Kubernetes
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/kubernetes
+      - name: gnp-stack
+        orgId: 1
+        folder: gnp-stack
+        disableDeletion: false
+        editable: true
+        type: file
+        options:
+          path:
+            /var/lib/grafana/dashboards/gnp-stack
+          foldersFromFilesStructure: true
+
+dashboards:
+  default:
+    # cert-manager:
+    #   gnetId: 20842
+    #   revision: 3
+    #   datasource: Prometheus
+  kubernetes:
+    k8s-system-api-server:
+      gnetId: 15761
+      revision: 19
+      datasource: Prometheus
+    k8s-views-global:
+      gnetId: 15757
+      revision: 43
+      datasource: Prometheus
+    k8s-views-nodes:
+      gnetId: 15759
+      revision: 35
+      datasource: Prometheus
+    k8s-views-namespaces:
+      gnetId: 15758
+      revision: 42
+      datasource: Prometheus
+    k8s-views-pods:
+      gnetId: 15760
+      revision: 36
+      datasource: Prometheus
+    k8s-volumes:
+      gnetId: 11454
+      revision: 14
+      datasource: Prometheus
+    node-exporter-full:
+      gnetId: 1860
+      revision: 39
+      datasource: Prometheus
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - access: proxy
+        name: Prometheus
+        type: prometheus
+        url: http://prometheus-operated.gnp-stack.svc.cluster.local:9090
+        isDefault: true
+        jsonData:
+          prometheusType: Prometheus
+    deleteDatasources:
+      - name: Prometheus
+        orgId: 1
+
+adminUser: admin
+adminPassword: gnp-stack
+# TODO Change for more secure setup
+# admin:
+#   existingSecret: grafana-admin
+
+env:
+  GF_ANALYTICS_CHECK_FOR_UPDATES: false
+  GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: false
+  GF_ANALYTICS_REPORTING_ENABLED: false
+  GF_NEWS_NEWS_FEED_ENABLED: false
+
+# envFromSecrets:
+#   - name: grafana-oauth-client-secret
+
+grafana.ini:
+  analytics:
+    check_for_updates: true
+  grafana_net:
+    url: https://grafana.net
+  log:
+    mode: console
+  paths:
+    data: /var/lib/grafana/
+    logs: /var/log/grafana
+    plugins: /var/lib/grafana/plugins
+    provisioning: /etc/grafana/provisioning
+  server:
+    root_url: https://grafana.gnp-stack.ch
+
+imageRenderer:
+  enabled: false
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+rbac:
+  pspEnabled: false
+
+# resources:
+#   limits:
+#     memory: 512Mi
+#   requests:
+#     cpu: 50m
+#     memory: 128Mi
+
+# ingress:
+#   enabled: true
+#   ingressClassName: nginx
+#   annotations:
+#     cert-manager.io/issuer: letsencrypt-dns01-prod
+#   path: /
+#   pathType: Prefix
+#   hosts:
+#     - grafana.gnp-stack.ch
+#   tls:
+#     - secretName: grafana-tls
+#       hosts:
+#         - grafana.gnp-stack.ch
+
+serviceAccount:
+  create: true
+  autoMount: true
+
+serviceMonitor:
+  enabled: true
+
+sidecar:
+  dashboards:
+    enabled: true
+    searchNamespace: ALL
+    label: grafana_dashboard
+    folderAnnotation: grafana_folder
+    provider:
+      folder: gnp-stack
+      disableDelete: true
+      foldersFromFilesStructure: true
+  datasources:
+    enabled: true
+    searchNamespace: ALL
+    labelValue: ""
+
+testFramework:
+  enabled: false

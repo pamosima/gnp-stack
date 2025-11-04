@@ -1,0 +1,252 @@
+apiVersion: v1
+data:
+  gnmic-ingestor.yaml: |
+    username: admin
+    log: true
+
+    targets:
+      192.168.60.9:
+        skip-verify: true
+        insecure: false
+        password: NokiaSrl1!
+        subscriptions:
+          - srl-if-states
+          - srl-if-stats
+          - srl-bgp
+          - srl-system-performance
+          - srl-routes
+          - srl-bridge
+          - srl-apps
+          - srl-net-instance
+
+    loader:
+      type: docker
+      filters:
+        - containers:
+            - label=clab-node-kind: nokia_srlinux
+          config:
+            skip-verify: true
+            insecure: false
+            password: NokiaSrl1!
+            subscriptions:
+              - srl-if-states
+              - srl-if-stats
+              - srl-bgp
+              - srl-system-performance
+              - srl-routes
+              - srl-bridge
+              - srl-apps
+              - srl-net-instance
+        - containers:
+            - label=clab-node-kind: arista_ceos
+          port: \"6030\"
+          config:
+            skip-verify: false
+            insecure: true
+            password: admin
+            subscriptions:
+              - eos-if-states
+              - eos-if-stats
+
+    subscriptions:
+      # srl
+      srl-system-performance:
+        mode: stream
+        stream-mode: sample
+        sample-interval: 15s
+        paths:
+          - /platform/control[slot=*]/cpu[index=all]/total
+          - /platform/control[slot=*]/memory
+        outputs:
+          - nats-srl-out
+      srl-if-states:
+        mode: stream
+        stream-mode: on_change
+        heartbeat-interval: 15s
+        paths:
+          - /interface[name=ethernet-1/*]/oper-state
+        outputs:
+          - nats-srl-out
+      srl-if-stats:
+        mode: stream
+        stream-mode: sample
+        sample-interval: 15s
+        paths:
+          - /interface[name=ethernet-1/*]/statistics
+          - /interface[name=ethernet-1/*]/traffic-rate
+        outputs:
+          - nats-srl-out
+      srl-routes:
+        mode: stream
+        stream-mode: sample
+        sample-interval: 15s
+        paths:
+          - /network-instance[name=*]/route-table/ipv4-unicast/statistics/
+          - /network-instance[name=*]/route-table/ipv6-unicast/statistics/
+        outputs:
+          - nats-srl-out
+      srl-bgp:
+        mode: stream
+        stream-mode: sample
+        sample-interval: 15s
+        paths:
+          - /network-instance[name=*]/protocols/bgp/statistics
+        outputs:
+          - nats-srl-out
+      srl-bridge:
+        mode: stream
+        stream-mode: sample
+        sample-interval: 15s
+        paths:
+          - /network-instance[name=*]/bridge-table/statistics/
+        outputs:
+          - nats-srl-out
+      srl-apps:
+        mode: stream
+        stream-mode: sample
+        sample-interval: 15s
+        paths:
+          - /system/app-management/application[name=*]
+        outputs:
+          - nats-srl-out
+      srl-net-instance:
+        mode: stream
+        stream-mode: on_change
+        heartbeat-interval: 15s
+        paths:
+          - /network-instance[name=*]/oper-state
+        outputs:
+          - nats-srl-out
+
+      # eos
+      eos-if-stats:
+        mode: stream
+        stream-mode: sample
+        sample-interval: 15s
+        paths:
+          - /interfaces/interface[name=*]/state/counters
+        outputs:
+          - nats-eos-out
+
+      eos-if-states:
+        mode: stream
+        stream-mode: on_change
+        # heartbeat-interval: 60s
+          #stream-mode: sample
+          #sample-interval: 5s
+        paths:
+          - /interfaces/interface[name=*]/state/admin-status
+          - /interfaces/interface[name=*]/state/oper-status
+          - /interfaces/interface[name=*]/state/last-change
+          - /interfaces/interface[name=*]/state/mtu
+        outputs:
+          - nats-eos-out
+
+    outputs:
+      nats-srl-out:
+        type: jetstream
+        name: gnmic-ingress-srl
+        address: nats:4222
+        stream: srl
+        create-stream:
+          description: srl telemetry data to be processed mid pipeline
+          subjects: []
+          storage: file
+          max-msgs: 3000000
+          # max-bytes:
+          # max-age:
+          # max-msg-size:
+        subject-format: subscription.target
+        # tls:
+        #   # string, path to the CA certificate file,
+        #   # this will be used to verify the clients certificates when `skip-verify` is false
+        #   ca-file:
+        #   # string, client certificate file.
+        #   cert-file:
+        #   # string, client key file.
+        #   key-file:
+        #   # boolean, if true, the client will not verify the server
+        #   # certificate against the available certificate chain.
+        #   skip-verify: false
+        connect-time-wait: 2s
+        format: event
+        split-events: false
+        override-timestamps: false
+        num-workers: 1
+        write-timeout: 5s
+        debug: false
+        buffer-size: 0
+        enable-metrics: true
+        event-processors: []
+
+      nats-eos-out:
+        type: jetstream
+        name: gnmic-ingress-eos
+        address: nats:4222
+        stream: eos
+        create-stream:
+          description: eos telemetry data to be processed mid pipeline
+          subjects: []
+          storage: file
+          max-msgs: 3000000
+          # max-bytes:
+          # max-age:
+          # max-msg-size:
+        subject-format: subscription.target
+        # tls:
+        #   # string, path to the CA certificate file,
+        #   # this will be used to verify the clients certificates when `skip-verify` is false
+        #   ca-file:
+        #   # string, client certificate file.
+        #   cert-file:
+        #   # string, client key file.
+        #   key-file:
+        #   # boolean, if true, the client will not verify the server
+        #   # certificate against the available certificate chain.
+        #   skip-verify: false
+        connect-time-wait: 2s
+        format: event
+        split-events: false
+        override-timestamps: false
+        num-workers: 1
+        write-timeout: 5s
+        debug: false
+        buffer-size: 0
+        enable-metrics: true
+        event-processors: []
+
+    api-server:
+      address: :7890
+      timeout: 10s
+      # tls:
+      #   # string, path to the CA certificate file,
+      #   # this certificate is used to verify the clients certificates.
+      #   ca-file:
+      #   # string, server certificate file.
+      #   cert-file:
+      #   # string, server key file.
+      #   key-file:
+      #   # string, one of `\"\", \"request\", \"require\", \"verify-if-given\", or \"require-verify\"
+      #   #  - request:         The server requests a certificate from the client but does not
+      #   #                     require the client to send a certificate.
+      #   #                     If the client sends a certificate, it is not required to be valid.
+      #   #  - require:         The server requires the client to send a certificate and does not
+      #   #                     fail if the client certificate is not valid.
+      #   #  - verify-if-given: The server requests a certificate,
+      #   #                     does not fail if no certificate is sent.
+      #   #                     If a certificate is sent it is required to be valid.
+      #   #  - require-verify:  The server requires the client to send a valid certificate.
+      #   #
+      #   # if no ca-file is present, `client-auth` defaults to \"\"`
+      #   # if a ca-file is set, `client-auth` defaults to \"require-verify\"`
+      # client-auth: \"\"
+      enable-metrics: true
+      debug: false
+      healthz-disable-logging: true
+kind: ConfigMap
+metadata:
+  annotations:
+    use-subpath: "true"
+  labels:
+    service: gnmic-ingestor
+  name: gnmic-ingestor-cm0
