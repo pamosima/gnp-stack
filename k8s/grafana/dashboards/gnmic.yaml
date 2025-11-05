@@ -9,7 +9,7 @@ metadata:
      prometheus: gnp-stack
      release: prometheus
   annotations:
-    grafana_folder: gnmi
+    grafana_folder: gnp-stack
 
 data:
   gnmic.json: |-

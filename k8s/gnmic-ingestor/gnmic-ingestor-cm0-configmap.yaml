@@ -5,7 +5,7 @@ data:
     log: true
 
     targets:
-      192.168.60.9:
+      192.168.60.11:
         skip-verify: true
         insecure: false
         password: NokiaSrl1!
@@ -250,3 +250,4 @@ metadata:
   labels:
     service: gnmic-ingestor
   name: gnmic-ingestor-cm0
+  namespace: gnp-stack

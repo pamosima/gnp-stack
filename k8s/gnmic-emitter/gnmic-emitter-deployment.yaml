@@ -4,6 +4,7 @@ metadata:
   labels:
     service: gnmic-emitter
   name: gnmic-emitter
+  namespace: gnp-stack
 spec:
   replicas: 1
   selector:
@@ -13,9 +14,6 @@ spec:
     type: Recreate
   template:
     metadata:
-      annotations:
-        kompose.cmd: kompose convert -f compose.yaml
-        kompose.version: 1.37.0 (HEAD)
       labels:
         service: gnmic-emitter
     spec:
@@ -28,7 +26,7 @@ spec:
           image: ghcr.io/openconfig/gnmic:0.42.0
           name: gnmic-emitter
           ports:
-            - containerPort: 9804
+            - containerPort: 7890
               protocol: TCP
           volumeMounts:
             - mountPath: /app/gnmic.yaml

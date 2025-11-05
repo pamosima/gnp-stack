@@ -4,6 +4,7 @@ metadata:
   labels:
     service: gnmic-ingestor
   name: gnmic-ingestor
+  namespace: gnp-stack
 spec:
   replicas: 1
   selector:
@@ -25,7 +26,7 @@ spec:
           image: ghcr.io/openconfig/gnmic:0.42.0
           name: gnmic-ingestor
           ports:
-            - containerPort: 9804
+            - containerPort: 7890
               protocol: TCP
           volumeMounts:
             - mountPath: /app/gnmic.yaml

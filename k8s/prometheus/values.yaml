@@ -60,7 +60,7 @@
       prometheusSpec:
         # scrapeInterval: ""
         # scrapeTimeout: ""
-        # enableRemoteWriteReceiver: false
+        enableRemoteWriteReceiver: true
         # Do not add `prometheus` and `prometheus_replica` external labels
         replicaExternalLabelNameClear: true
         prometheusExternalLabelNameClear: true

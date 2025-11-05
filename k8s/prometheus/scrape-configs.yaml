@@ -21,15 +21,15 @@ spec:
   jobName: gnmic
   staticConfigs:
     - targets:
-        - gnmic-ingestor.svc.cluster.local:7890
-        - gnmic-emitter.svc.cluster.local:7890
+        - gnmic-ingestor:7890
+        - gnmic-emitter:7890
 ---
-apiVersion: monitoring.coreos.com/v1alpha1
-kind: ScrapeConfig
-metadata:
-  name: nats
-spec:
-  jobName: nats
-  staticConfigs:
-    - targets:
-        - nats-exporter.svc.cluster.local:7777
+# apiVersion: monitoring.coreos.com/v1alpha1
+# kind: ScrapeConfig
+# metadata:
+#   name: nats
+# spec:
+#   jobName: nats
+#   staticConfigs:
+#     - targets:
+#         - nats-exporter.svc.cluster.local:7777

@@ -45,7 +45,7 @@ data:
     outputs:
       prom-write:
         type: prometheus_write
-        url: http://prometheus:9090/api/v1/write
+        url: http://prometheus-operated:9090/api/v1/write
         interval: 10s
         buffer-size: 1000
         max-time-series-per-write: 500
@@ -131,3 +131,4 @@ metadata:
   labels:
     service: gnmic-emitter
   name: gnmic-emitter-cm0
+  namespace: gnp-stack

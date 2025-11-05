@@ -4,10 +4,11 @@ metadata:
   labels:
     service: gnmic-emitter
   name: gnmic-emitter
+  namespace: gnp-stack
 spec:
   ports:
-    - name: "9806"
-      port: 9806
-      targetPort: 9804
+    - name: api-server
+      port: 7890
+      targetPort: 7890
   selector:
     service: gnmic-emitter
