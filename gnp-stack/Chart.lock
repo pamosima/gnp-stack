@@ -1,0 +1,12 @@
+dependencies:
+- name: grafana
+  repository: https://grafana.github.io/helm-charts
+  version: 10.1.4
+- name: nats
+  repository: https://nats-io.github.io/k8s/helm/charts/
+  version: 2.12.1
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 77.14.0
+digest: sha256:0b00d108a7abba22a66c7a3016ede0d62adb079ca515a0a6ff8782cdcf2d8a1c
+generated: "2025-11-11T10:06:15.182741806Z"

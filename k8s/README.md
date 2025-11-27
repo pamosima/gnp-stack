@@ -7,7 +7,7 @@ This directory contains Kubernetes manifests for deploying the GNP-Stack to a Ku
 
 Using [talosctl](https://docs.siderolabs.com/talos/v1.11/getting-started/talosctl), you can quickly set up a local Kubernetes cluster for testing and development purposes.
 ```bash
-talosctl cluster create --cidr 192.168.60.0/24 --name gnp-stack_gnp-mgmt --wait=false --config-patch '{"cluster":{"network":{"cni":{"name":"none"}},"proxy":{"disabled":true}}}'
+talosctl cluster create --cidr 192.168.60.0/24 --name gnp-stack_gnp-mgmt --wait=false --config-patch '{"cluster":{"network":{"cni":{"name":"none"}},"proxy":{"disabled":true}}}' --cpus-workers 12.0 --memory-workers 12000
 talosctl kubeconfig -n 192.168.60.2 .
 kubectl config view --flatten --kubeconfig ./kubeconfig > ~/.kube/config
 ```
@@ -36,7 +36,17 @@ k8sServicePort: 7445
 EOF
 ```
 
-## Setup dependencies
+## New helm install full stack
+Install CRDs:
+```bash
+helm upgrade -i prometheus-crds oci://ghcr.io/prometheus-community/charts/prometheus-operator-crds --version 23.0.0
+```
+Install gnp-stack:
+```bash
+helm upgrade --install gnp-stack ./gnp-stack --namespace gnp-stack --create-namespace
+```
+
+## Old install all components separately
 Setup namespace:
 ```bash
 kubectl create namespace gnp-stack
@@ -72,4 +82,10 @@ GNMIC Ingestor and Emitter:
 ```bash
 kubectl apply -f gnmic-ingestor
 kubectl apply -f gnmic-emitter
+```
+
+
+## Cleanup demo cluster
+```bash
+talosctl cluster destroy --name gnp-stack_gnp-mgmt
 ```

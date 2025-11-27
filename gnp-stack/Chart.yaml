@@ -1,0 +1,19 @@
+apiVersion: v2
+name: gnp-stack
+description: A Helm chart for Kubernetes
+dependencies:
+  - name: grafana
+    version: 10.1.4
+    repository: https://grafana.github.io/helm-charts
+  - name: nats
+    version: 2.12.1
+    repository: https://nats-io.github.io/k8s/helm/charts/
+  - name: kube-prometheus-stack
+    version: 77.14.0
+    repository: https://prometheus-community.github.io/helm-charts
+
+type: application
+
+version: 0.0.1
+
+appVersion: "0.0.1"

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: goflow2
+  labels:
+    app: goflow2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: goflow2
+  template:
+    metadata:
+      labels:
+        app: goflow2
+    spec:
+      containers:
+        - name: goflow2
+          image: registry.gitlab.ost.ch:45023/ramon.bister/goflow2:v2.2.3-nats
+          imagePullPolicy: Always
+          args: ["-transport=nats", "-transport.nats.url=gnp-stack-nats:4222", "-format=bin"]
+          ports:
+            - containerPort: 2055

@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.32.3/service.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse
+spec:
+  type: ClusterIP
+  selector:
+    app: clickhouse
+  ports:
+    - name: clickhouse
+      port: 8123
+      protocol: TCP
+      targetPort: 8123
