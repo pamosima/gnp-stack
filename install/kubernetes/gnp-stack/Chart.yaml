@@ -17,6 +17,6 @@ dependencies:
 
 type: application
 
-version: 0.0.3
+version: 0.0.3-alpha1
 
-appVersion: "0.0.3"
+appVersion: "0.0.3-alpha1"
