@@ -1,6 +1,10 @@
+{{ with .Values.clickhouse }}
+{{ if .enabled}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: clickhouse-config
 data:
-{{ .Values.clickhouse.config | toYaml | indent 2 }}
+{{ .config | toYaml | indent 2 }}
+{{- end -}}
+{{- end -}}
