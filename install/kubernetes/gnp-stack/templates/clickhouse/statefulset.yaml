@@ -1,0 +1,54 @@
+{{ with .Values.clickhouse }}
+{{ if .enabled}}
+{{ with .statefulset }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse
+  labels:
+    app: clickhouse
+spec:
+  replicas: 1
+  serviceName: clickhouse
+  selector:
+    matchLabels:
+      app: clickhouse
+  template:
+    metadata:
+      labels:
+        app: clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: docker.io/clickhouse:25.9.4
+          ports:
+            - containerPort: 8123
+          env:
+            - name: CLICKHOUSE_USER
+              value: grafana
+          command:
+{{ .command | toYaml | indent 12 }}
+          volumeMounts:
+            - mountPath: /mnt/clickhouse-config/
+              name: cfgmap
+            - mountPath: /var/lib/clickhouse/store
+              name: clickhouse-store
+      volumes:
+        - name: cfgmap
+          configMap:
+            name: clickhouse-config
+  volumeClaimTemplates:
+    - metadata:
+        name: clickhouse-store
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .storageClassName -}}
+        storageClassName: {{ .storageClassName }}
+        {{ end }}
+        resources:
+          requests:
+            storage: 100Gi
+{{ end }}
+{{ end }}
+{{ end }}
