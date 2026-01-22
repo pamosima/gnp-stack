@@ -1,5 +1,5 @@
 apiVersion: v2
-name: gnp-stack
+name: gnp-stack-ipfix
 description: A Helm chart for Kubernetes
 dependencies:
   - name: grafana
@@ -17,6 +17,6 @@ dependencies:
 
 type: application
 
-version: 0.0.5
+version: 0.0.1
 
-appVersion: "0.0.5"
+appVersion: "0.0.1"

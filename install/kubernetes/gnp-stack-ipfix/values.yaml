@@ -1,16 +1,5 @@
-# Default values for gnp-stack.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-# Local Path Provisioner for persistent storage of Grafana and NATS JetStream
-localPathProvisioner:
-  enabled: true
-
-# gNMIc configuration
 gnmic:
   enabled: true
-  # Config file for gnmic-ingestor
-  # For details see: https://gnmic.openconfig.net/user_guide/configuration_file/
   ingestor:
     config: |
       username: admin
@@ -255,8 +244,6 @@ gnmic:
         enable-metrics: true
         debug: false
         healthz-disable-logging: true
-  # Config file for gnmic-emitter
-  # For details see: https://gnmic.openconfig.net/user_guide/configuration_file/
   emitter:
     config: |
       log: true
@@ -385,15 +372,293 @@ gnmic:
         debug: false
         healthz-disable-logging: true
 
+goflow:
+  enabled: true
+
+clickhouse:
+  enabled: true
+  statefulset:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /var/lib/clickhouse/user_files/
+        mkdir -p /docker-entrypoint-initdb.d/
+        mkdir -p /var/lib/clickhouse/format_schemas/
+        cp /mnt/clickhouse-config/protocols.csv /var/lib/clickhouse/user_files/protocols.csv
+        cp /mnt/clickhouse-config/create.sh /docker-entrypoint-initdb.d/create.sh
+        cp /mnt/clickhouse-config/flow.proto /var/lib/clickhouse/format_schemas/flow.proto
+        /entrypoint.sh
+  config:
+    protocols.csv: |
+      proto,name,description
+      0,HOPOPT,IPv6 Hop-by-Hop Option
+      1,ICMP,Internet Control Message
+      2,IGMP,Internet Group Management
+      4,IPv4,IPv4 encapsulation
+      6,TCP,Transmission Control Protocol
+      8,EGP,Exterior Gateway Protocol
+      9,IGP,Interior Gateway Protocol
+      16,CHAOS,Chaos
+      17,UDP,User Datagram Protocol
+      27,RDP,Reliable Data Protocol
+      41,IPv6,IPv6 encapsulation
+      43,IPv6-Route,Routing Header for IPv6
+      44,IPv6-Frag,Fragment Header for IPv6
+      45,IDRP,Inter-Domain Routing Protocol
+      46,RSVP,Reservation Protocol
+      47,GRE,Generic Routing Encapsulation
+      50,ESP,Encap Security Payload
+      51,AH,Authentication Header
+      55,MOBILE,IP Mobility
+      58,IPv6-ICMP,ICMP for IPv6
+      59,IPv6-NoNxt,No Next Header for IPv6
+      60,IPv6-Opts,Destination Options for IPv6
+      88,EIGRP,EIGRP
+      89,OSPFIGP,OSPFIGP
+      92,MTP,Multicast Transport Protocol
+      94,IPIP,IP-within-IP Encapsulation Protocol
+      97,ETHERIP,Ethernet-within-IP Encapsulation
+      98,ENCAP,Encapsulation Header
+      112,VRRP,Virtual Router Redundancy Protocol
+    flow.proto: |
+      syntax = "proto3";
+      package flowpb;
+      option go_package = "github.com/netsampler/goflow2/pb;flowpb";
+
+      message FlowMessage {
+
+        enum FlowType {
+          FLOWUNKNOWN = 0;
+          SFLOW_5 = 1;
+          NETFLOW_V5 = 2;
+          NETFLOW_V9 = 3;
+          IPFIX = 4;
+        }
+        FlowType type = 1;
+
+        uint64 time_received_ns = 110;
+        uint32 sequence_num = 4;
+        uint64 sampling_rate = 3;
+
+        //uint32 flow_direction = 42;
+
+        // Sampler information
+        bytes sampler_address = 11;
+
+        // Found inside packet
+        uint64 time_flow_start_ns = 111;
+        uint64 time_flow_end_ns = 112;
+
+        // Size of the sampled packet
+        uint64 bytes = 9;
+        uint64 packets = 10;
+
+        // Source/destination addresses
+        bytes src_addr = 6;
+        bytes dst_addr = 7;
+
+        // Layer 3 protocol (IPv4/IPv6/ARP/MPLS...)
+        uint32 etype = 30;
+
+        // Layer 4 protocol
+        uint32 proto = 20;
+
+        // Ports for UDP and TCP
+        uint32 src_port = 21;
+        uint32 dst_port = 22;
+
+        // Interfaces
+        uint32 in_if = 18;
+        uint32 out_if = 19;
+
+        // Ethernet information
+        uint64 src_mac = 27;
+        uint64 dst_mac = 28;
+
+        // Vlan
+        uint32 src_vlan = 33;
+        uint32 dst_vlan = 34;
+        // 802.1q VLAN in sampled packet
+        uint32 vlan_id = 29;
+
+        // IP and TCP special flags
+        uint32 ip_tos = 23;
+        uint32 forwarding_status = 24;
+        uint32 ip_ttl = 25;
+        uint32 ip_flags = 38;
+        uint32 tcp_flags = 26;
+        uint32 icmp_type = 31;
+        uint32 icmp_code = 32;
+        uint32 ipv6_flow_label = 37;
+        // Fragments (IPv4/IPv6)
+        uint32 fragment_id = 35;
+        uint32 fragment_offset = 36;
+
+        // Autonomous system information
+        uint32 src_as = 14;
+        uint32 dst_as = 15;
+
+        bytes next_hop = 12;
+        uint32 next_hop_as = 13;
+
+        // Prefix size
+        uint32 src_net = 16;
+        uint32 dst_net = 17;
+
+        // BGP information
+        bytes bgp_next_hop = 100;
+        repeated uint32 bgp_communities = 101;
+        repeated uint32 as_path = 102;
+
+        // MPLS information
+        repeated uint32 mpls_ttl = 80;
+        repeated uint32 mpls_label = 81;
+        repeated bytes mpls_ip = 82;
+
+        uint32 observation_domain_id = 70;
+        uint32 observation_point_id = 71;
+
+        // Encapsulation
+        enum LayerStack {
+          Ethernet = 0;
+          IPv4 = 1;
+          IPv6 = 2;
+          TCP = 3;
+          UDP = 4;
+          MPLS = 5;
+          Dot1Q = 6;
+          ICMP = 7;
+          ICMPv6 = 8;
+          GRE = 9;
+          IPv6HeaderRouting = 10;
+          IPv6HeaderFragment = 11;
+          Geneve = 12;
+          Teredo = 13;
+          Custom = 99;
+          // todo: add nsh
+        }
+        repeated LayerStack layer_stack = 103;
+        repeated uint32 layer_size = 104;
+
+        repeated bytes ipv6_routing_header_addresses = 105; // SRv6
+        uint32 ipv6_routing_header_seg_left = 106; // SRv6
+
+      }
+    create.sh: |
+      #!/bin/bash
+      set -e
+
+      clickhouse client -n <<-EOSQL
+
+          CREATE DATABASE IF NOT EXISTS flow_data;
+          USE flow_data;
+
+          CREATE DICTIONARY IF NOT EXISTS protocol_dict (
+              proto UInt8,
+              name String,
+              description String
+          )
+          PRIMARY KEY proto
+          LAYOUT(FLAT())
+          SOURCE (FILE(path '/var/lib/clickhouse/user_files/protocols.csv' format 'CSVWithNames'))
+          LIFETIME(3600);
+
+          CREATE TABLE IF NOT EXISTS flows_input_nats
+          (
+              time_received_ns UInt64,
+              time_flow_start_ns UInt64,
+
+              sequence_num UInt32,
+              sampling_rate UInt64,
+              sampler_address FixedString(16),
+
+              src_addr FixedString(16),
+              dst_addr FixedString(16),
+
+              src_as UInt32,
+              dst_as UInt32,
+
+              etype UInt32,
+              proto UInt32,
+
+              src_port UInt32,
+              dst_port UInt32,
+
+              bytes UInt64,
+              packets UInt64
+          ) ENGINE = NATS
+              SETTINGS
+                  nats_url = 'gnp-stack-nats:4222',
+                  nats_stream = 'goflow2-stream',
+                  nats_subjects = 'goflow2-messages',
+                  nats_consumer_name = 'goflow2-consumer',
+                  nats_format = 'Protobuf',
+                  nats_schema = 'flow.proto:FlowMessage';
+
+          CREATE TABLE IF NOT EXISTS flows
+          (
+              date Date,
+              time_inserted_ns DateTime64(9),
+              time_received_ns DateTime64(9),
+              time_flow_start_ns DateTime64(9),
+
+              sequence_num UInt32,
+              sampling_rate UInt64,
+              sampler_address FixedString(16),
+
+              src_addr FixedString(16),
+              dst_addr FixedString(16),
+
+              src_as UInt32,
+              dst_as UInt32,
+
+              etype UInt32,
+              proto UInt32,
+
+              src_port UInt32,
+              dst_port UInt32,
+
+              bytes UInt64,
+              packets UInt64
+          ) ENGINE = MergeTree()
+          PARTITION BY date
+          ORDER BY time_received_ns;
+
+          CREATE MATERIALIZED VIEW IF NOT EXISTS flows_mv TO flows
+          AS SELECT
+              toDate(time_received_ns) AS date,
+              now() AS time_inserted_ns,
+              toDateTime64(time_received_ns/1000000000, 9) AS time_received_ns,
+              toDateTime64(time_flow_start_ns/1000000000, 9) AS time_flow_start_ns,
+              sequence_num,
+              sampling_rate,
+              sampler_address,
+
+              src_addr,
+              dst_addr,
+
+              src_as,
+              dst_as,
+
+              etype,
+              proto,
+
+              src_port,
+              dst_port,
+
+              bytes,
+              packets
+            FROM flows_input_nats;
+      EOSQL
+
 # Grafana configuration
-# For more options see: https://github.com/grafana/helm-charts/tree/main/charts/grafana
 grafana:
   replicas: 1
   # Grafana is too dumb for non-failing upgrades: https://github.com/grafana/helm-charts/issues/1184
   deploymentStrategy:
     type: Recreate
 
-  # Grafana dashboard providers configuration
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -425,7 +690,6 @@ grafana:
               /var/lib/grafana/dashboards/gnp-stack
             foldersFromFilesStructure: true
 
-  # Default gnp-stack and kubernetes dashboards
   dashboards:
     default:
     kubernetes:
@@ -458,7 +722,6 @@ grafana:
         revision: 39
         datasource: Prometheus
 
-  # Grafana datasource connection to Prometheus
   datasources:
     datasources.yaml:
       apiVersion: 1
@@ -474,10 +737,9 @@ grafana:
         - name: Prometheus
           orgId: 1
 
-  # Grafana admin user credentials
   adminUser: admin
   adminPassword: gnp-stack
-  # (Optional) Use existing secret for Grafana admin credentials
+  # TODO Change for more secure setup
   # admin:
   #   existingSecret: grafana-admin
 
@@ -487,11 +749,9 @@ grafana:
     GF_ANALYTICS_REPORTING_ENABLED: false
     GF_NEWS_NEWS_FEED_ENABLED: false
 
-  # (Optional) Use existing secret for Grafana environment variables
   # envFromSecrets:
   #   - name: grafana-oauth-client-secret
 
-  # Grafana configuration file settings
   grafana.ini:
     analytics:
       check_for_updates: true
@@ -542,7 +802,6 @@ grafana:
     create: true
     autoMount: true
 
-  # Grafana monitor to monitor itself
   serviceMonitor:
     enabled: true
 
@@ -565,7 +824,6 @@ grafana:
     enabled: false
 
 # Prometheus configuration
-# For more options see: https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
 kube-prometheus-stack:
   crds:
     enabled: false
@@ -702,7 +960,6 @@ kube-prometheus-stack:
       scrapeConfigSelector: {}
 
 # NATS configuration
-# For more options see: https://github.com/nats-io/k8s/tree/main/helm/charts/nats
 nats:
   ############################################################
   # NATS config

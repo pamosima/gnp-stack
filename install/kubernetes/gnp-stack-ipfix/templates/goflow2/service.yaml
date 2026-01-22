@@ -1,3 +1,5 @@
+{{- with .Values.goflow -}}
+{{- if .enabled -}}
 # yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.32.3/service.json
 apiVersion: v1
 kind: Service
@@ -12,17 +14,5 @@ spec:
       protocol: UDP
       port: 2055
       targetPort: 2055
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: goflow2
-spec:
-  type: ClusterIP
-  selector:
-    app: goflow2
-  ports:
-    - name: netflow
-      port: 2055
-      protocol: UDP
-      targetPort: 2055
+{{- end -}}
+{{- end -}}

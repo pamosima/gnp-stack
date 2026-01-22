@@ -1,5 +1,3 @@
-{{ with .Values.localPathProvisioner }}
-{{ if .enabled }}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -198,5 +196,3 @@ spec:
       - configMap:
           name: local-path-config
         name: config-volume
-{{- end -}}
-{{- end -}}

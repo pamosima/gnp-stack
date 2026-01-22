@@ -1,3 +1,5 @@
+{{ with .Values.goflow }}
+{{ if .enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,3 +23,5 @@ spec:
           args: ["-transport=nats", "-transport.nats.url=gnp-stack-nats:4222", "-format=bin"]
           ports:
             - containerPort: 2055
+{{- end -}}
+{{- end -}}
