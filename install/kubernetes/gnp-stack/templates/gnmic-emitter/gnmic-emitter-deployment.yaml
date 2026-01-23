@@ -1,3 +1,4 @@
+{{- with .Values.gnmic.emitter -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +7,7 @@ metadata:
   name: gnmic-emitter
   namespace: gnp-stack
 spec:
-  replicas: 1
+  replicas: {{ .replcias }}
   selector:
     matchLabels:
       service: gnmic-emitter
@@ -41,3 +42,4 @@ spec:
                 path: gnmic.yaml
             name: gnmic-emitter-cm0
           name: gnmic-emitter-cm0
+{{- end -}}

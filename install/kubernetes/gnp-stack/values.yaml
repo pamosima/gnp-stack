@@ -12,6 +12,7 @@ gnmic:
   # Config file for gnmic-ingestor
   # For details see: https://gnmic.openconfig.net/user_guide/configuration_file/
   ingestor:
+    replicas: 1
     config: |
       username: admin
       log: true
@@ -258,6 +259,7 @@ gnmic:
   # Config file for gnmic-emitter
   # For details see: https://gnmic.openconfig.net/user_guide/configuration_file/
   emitter:
+    replicas: 1
     config: |
       log: true
 

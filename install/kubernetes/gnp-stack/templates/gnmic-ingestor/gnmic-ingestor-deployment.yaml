@@ -1,3 +1,4 @@
+{{- with .Values.gnmic.ingestor -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +7,7 @@ metadata:
   name: gnmic-ingestor
   namespace: gnp-stack
 spec:
-  replicas: 1
+  replicas: {{ .replicas }}
   selector:
     matchLabels:
       service: gnmic-ingestor
@@ -41,3 +42,4 @@ spec:
                 path: gnmic.yaml
             name: gnmic-ingestor-cm0
           name: gnmic-ingestor-cm0
+{{- end -}}
