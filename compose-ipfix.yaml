@@ -1,0 +1,30 @@
+# Optional overlay: add IPFIX/NetFlow/sFlow collector (GoFlow2).
+# Usage:
+#   docker compose -f compose.yaml -f compose-ipfix.yaml up -d
+# Or with IOS-XE: docker compose -f compose.yaml -f compose-iosxe.yaml -f compose-ipfix.yaml up -d
+#
+# Image: https://hub.docker.com/r/netsampler/goflow2 (IPFIX/NetFlow/sFlow)
+# Devices send flows to the host IP (e.g. 198.18.134.22) on the exposed UDP ports.
+networks:
+  gnp-mgmt:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.60.0/24
+
+services:
+  gnp-stack-ipfix:
+    image: netsampler/goflow2:latest
+    container_name: gnp-stack-ipfix
+    ports:
+      - "4739:4739/udp"   # IPFIX
+      - "2055:2055/udp"   # NetFlow v9
+      - "6343:6343/udp"   # sFlow
+      - "9081:8081"   # Prometheus metrics (host 9081 -> container 8081)
+    networks:
+      - gnp-mgmt
+    # Single -listen: netflow handles both NetFlow v9 and IPFIX (no separate "ipfix" scheme)
+    command:
+      - -listen=netflow://:2055,netflow://:4739,sflow://:6343
+      - -addr=0.0.0.0:8081
+    restart: unless-stopped

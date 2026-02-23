@@ -59,6 +59,8 @@ services:
     #user: 65534:65534
     ports:
       - 9090:9090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./prometheus/:/etc/prometheus/
     command: |

@@ -1,0 +1,47 @@
+# Optional overlay: syslog ingestion via Vector → ClickHouse (ClickStack).
+# Requires compose-clickstack.yaml (ClickHouse must be running).
+# Usage:
+#   docker compose -f compose.yaml -f compose-clickstack.yaml -f compose-syslog.yaml up -d
+#
+# Devices send syslog to this host on UDP 514 (e.g. logging host 198.18.134.22).
+# Table default.syslog is created on first run via clickstack-syslog-init.
+networks:
+  gnp-mgmt:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.60.0/24
+
+services:
+  # One-off: create default.syslog table in ClickStack's ClickHouse
+  clickstack-syslog-init:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: gnp-stack-clickstack-syslog-init
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 5
+        clickhouse-client --host gnp-stack-clickstack < /init/syslog.sql
+        echo "syslog table ready"
+    volumes:
+      - ./clickhouse/init/syslog.sql:/init/syslog.sql:ro
+    depends_on:
+      - clickstack
+    networks:
+      - gnp-mgmt
+    restart: "no"
+
+  vector:
+    image: timberio/vector:0.38.0-debian
+    container_name: gnp-stack-vector
+    volumes:
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+    command: ["--config", "/etc/vector/vector.toml"]
+    ports:
+      - "514:514/udp"
+    depends_on:
+      clickstack-syslog-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - gnp-mgmt

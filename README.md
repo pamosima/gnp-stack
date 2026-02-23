@@ -1,28 +1,44 @@
 # gnp-stack
 
-gNMIc-NATS-Prometheus Stack for Network Telemetry
+gNMIc–NATS–Prometheus observability stack for network streaming telemetry and logs. One repo, Docker Compose, optional syslog and IPFIX — built to plug into AI/MCP troubleshooting.
 
-For far too long network operators have been stuck in the SNMP era. Streaming Telemetry is a very old topic now, and yet for some reason, it has not penetrated the market outside of Service Providers and Hyperscalers. 
+## What’s in the box
 
-It is the author's opinion that this is predominantly due to the complexity of assembling and configuring the stack. This is the problem this project seeks to resolve. More of the background here has been written into a separate blog-like post [here](ARCHAEOLOGY.md).
+- **Ingestion:** gNMIc (gNMI streaming), Vector (syslog UDP 514), optional IPFIX/NetFlow/sFlow
+- **Storage:** ClickStack (ClickHouse + HyperDX UI), Prometheus (scrape + remote_write to ClickHouse)
+- **Visualisation:** Grafana, HyperDX (logs, traces, metrics)
 
-I would like to point out that this project's existence is not to contradict the value of SNMP based tooling like [LibreNMS](https://www.librenms.org). For many, SNMP on a 5 min polling interval is ample. LibreNMS's coverage is fantastic, and I would recommend it to anyone looking to gain visibility on their network where non exists today. It also has a number of USPs in addition such as billing, syslog storage and device backups. This project is not in direct competition on that basis anyways.
+You choose which pieces to run via compose overlays. See [docs/CLICKSTACK.md](docs/CLICKSTACK.md) for deployment and ports.
 
-This project exists to give those needing or wanting Streaming Telemetry that same experience of point and shoot that you get from LibreNMS today on SNMP. 
+## Quick start
 
-If you are here as a commercial entity looking to pillage this hard work to monetise it - don't - contribute to this project and help everyone get access to better telemetry. 
+1. Copy [.env.example](.env.example) to `.env` and set `GNP_STACK_HOST` to the IP or hostname where you run the stack.
 
-No matter what kind of entity you are, if you simply want to use this to monitor your network - go right ahead. 
+2. Base + ClickStack (HyperDX, ClickHouse, Prometheus integration):
+   ```bash
+   docker compose -f compose.yaml -f compose-clickstack.yaml up -d
+   ```
+   Open http://\<host\>:8080 for HyperDX; create a user on first use.
 
-## How this works
+3. Full stack with IOS-XE, IPFIX, and syslog:
+   ```bash
+   docker compose -f compose.yaml -f compose-iosxe.yaml -f compose-ipfix.yaml \
+     -f compose-clickstack.yaml -f compose-syslog.yaml up -d
+   ```
 
-It sort of doesnt *yet*.
+## Extensions
 
-Right now this is a Proof of Concept using containerlab to spin up all the components and validate the paths, transforms and dashboard views. We are focussing our attention on Nokia SRL and Arista EOS because these vendors are progressive enough to offer free containerlab images. Other vendors will come as access to equipment, time and priority allows (specifically Juniper and Nokia SROS on the basis of personal needs!)
+- **C9k / IOS-XE:** [docs/ROADMAP-CML-MCP.md](docs/ROADMAP-CML-MCP.md), `gnmic/gnmic-ingestor-iosxe.yaml`, overlay `compose-iosxe.yaml`
+- **Syslog:** [docs/SYSLOG-DESIGN.md](docs/SYSLOG-DESIGN.md), [docs/SYSLOG-DEVICE-CONFIG.md](docs/SYSLOG-DEVICE-CONFIG.md), overlay `compose-syslog.yaml`
+- **MCP troubleshooting:** [docs/MCP-TROUBLESHOOTING-DEMO.md](docs/MCP-TROUBLESHOOTING-DEMO.md)
+- **gNMI, syslog, and open-source MCP:** [docs/GNMI-VS-SYSLOG-AND-OPEN-SOURCE-MCP.md](docs/GNMI-VS-SYSLOG-AND-OPEN-SOURCE-MCP.md)
 
-When a critical mass is hit we will produce a docker compose file that can be loaded on any linux system with docker. In v1 we will make mapping vendors to telemetry paths with include files, and in v2 we will produce the tooling that maps the various telemetry paths to the vendor/version. We expect that target mapping will be done with SoT integrations (like Netbox and Infrahub), and telemetry path mapping will be stored in some sort of database that can be syncronised to keep it up to date as paths/versions evolve.
+## Background
 
-It will take some time to produce all these parts, but there are a handful of engineers in the community who are committed to seeing this succeed. 
+More on the motivation and history: [ARCHAEOLOGY.md](ARCHAEOLOGY.md).
 
-If you are one of them, feel free to hop into the issues board and simply report them, or pick stuff up. PRs are always welcome. 
+## Contributing and license
 
+- **Contributing:** See [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit changes and open pull requests.
+- **Code of conduct:** This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+- **License:** This project is licensed under the Cisco Sample Code License, Version 1.1 — see the [LICENSE](LICENSE) file for details. This is example code for demonstration and learning; it is not officially supported by Cisco and is not intended for production use without proper testing and customization.

@@ -1,0 +1,64 @@
+# ClickStack (HyperDX UI + OTel collector + ClickHouse) — single ClickHouse for the stack.
+# Uses default port 8123 for ClickHouse HTTP.
+# See: https://clickhouse.com/docs/use-cases/observability/clickstack
+#
+# Usage:
+#   docker compose -f compose.yaml -f compose-clickstack.yaml up -d
+# Then open http://<host>:8080 to create a user and use the HyperDX UI.
+# If you use a different port (e.g. 8081) or access by IP, set HYPERDX_APP_URL so post-login redirects work:
+#   HYPERDX_APP_URL=http://${GNP_STACK_HOST:-localhost}:8081
+#
+# Ports:
+#   8080  - HyperDX UI (or 8081 if 8080 is in use)
+#   8123  - ClickHouse HTTP (default)
+#   9363  - ClickHouse Prometheus (/metrics, /write, /read)
+#   4317  - OTLP gRPC, 4318 - OTLP HTTP
+#   24225 - Fluentd, 8888 - collector metrics, 13133 - health
+services:
+  clickstack:
+    image: clickhouse/clickstack-all-in-one:latest
+    container_name: gnp-stack-clickstack
+    command: ["clickstack"]
+    ports:
+      - "8080:8080"   # HyperDX UI
+      - "8123:8123"   # ClickHouse HTTP (default)
+      - "9363:9363"   # ClickHouse Prometheus remote_write/read
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "24225:24225" # Fluentd
+      - "8888:8888"   # Collector metrics
+      - "13133:13133" # Health
+    volumes:
+      - clickstack-data:/data/db
+      - clickstack-ch:/var/lib/clickhouse
+      - clickstack-ch-logs:/var/log/clickhouse-server
+    environment:
+      - HYPERDX_OTEL_EXPORTER_CLICKHOUSE_DATABASE=default
+      # Set to the URL you use to open the UI (host + port) so login redirects work instead of localhost:8080
+      - HYPERDX_APP_URL=${HYPERDX_APP_URL:-http://localhost:8080}
+    restart: unless-stopped
+    networks:
+      - gnp-mgmt
+
+  # One-off: create Prometheus TimeSeries table in ClickStack's ClickHouse
+  clickstack-init-prometheus:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: gnp-stack-clickstack-init-prometheus
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 10
+        clickhouse-client --host gnp-stack-clickstack < /init/prometheus_ts.sql
+        echo "prometheus_ts ready"
+    volumes:
+      - ./clickhouse/init/prometheus_ts.sql:/init/prometheus_ts.sql:ro
+    depends_on:
+      - clickstack
+    networks:
+      - gnp-mgmt
+    restart: "no"
+
+volumes:
+  clickstack-data:
+  clickstack-ch:
+  clickstack-ch-logs:

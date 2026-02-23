@@ -1,0 +1,8 @@
+# ClickHouse → Prometheus exporter (queries default.syslog, exposes :9099/metrics)
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements-export.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY export-syslog-metrics.py .
+EXPOSE 9099
+CMD ["python", "export-syslog-metrics.py"]

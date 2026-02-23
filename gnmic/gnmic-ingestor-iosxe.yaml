@@ -1,0 +1,130 @@
+# gNMIc ingestor for Cisco IOS-XE (C9k + optional core) — dial-in to pod switches via NAT on c8k-core01
+# Targets: adjust for your CML/IOS-XE devices (management IP and gNMI port, e.g. 57400).
+# Production: use env or file-based secrets for passwords; do not commit real credentials.
+---
+# Lab credential only; for production use env or secrets (do not commit real passwords).
+username: netadmin
+password: C1sco12345
+log: true
+
+# Core (c8k-core01) + pod switches via NAT. gNMI port on IOS-XE is 57400.
+# Ensure gNMI is enabled on each device (gnmi-yang / gnxi on C9K).
+# C8000V (c8k-core01) on IOS-XE 17.16 does NOT support gNMI server (gnxi/gnmi-yang invalid);
+# this is a platform/image limitation, not license. Uncomment core when your image supports it.
+targets:
+#  198.18.170.200:
+#    port: "57400"
+#    skip-verify: true
+#    insecure: true
+#    password: C1sco12345
+#    subscriptions:
+#      - iosxe-if-state-sample
+#      - iosxe-if-stats
+  198.18.170.201:
+    port: "57400"
+    skip-verify: true
+    insecure: true
+    password: C1sco12345
+    subscriptions:
+      - iosxe-if-state-sample
+      - iosxe-if-stats
+  198.18.170.202:
+    port: "57400"
+    skip-verify: true
+    insecure: true
+    password: C1sco12345
+    subscriptions:
+      - iosxe-if-state-sample
+      - iosxe-if-stats
+  198.18.170.203:
+    port: "57400"
+    skip-verify: true
+    insecure: true
+    password: C1sco12345
+    subscriptions:
+      - iosxe-if-state-sample
+      - iosxe-if-stats
+  198.18.170.204:
+    port: "57400"
+    skip-verify: true
+    insecure: true
+    password: C1sco12345
+    subscriptions:
+      - iosxe-if-state-sample
+      - iosxe-if-stats
+  198.18.170.205:
+    port: "57400"
+    skip-verify: true
+    insecure: true
+    password: C1sco12345
+    subscriptions:
+      - iosxe-if-state-sample
+      - iosxe-if-stats
+
+subscriptions:
+  # Interface state via SAMPLE (IOS-XE rejects ON_CHANGE with filter-type for these paths).
+  iosxe-if-state-sample:
+    mode: stream
+    stream-mode: sample
+    sample-interval: 30s
+    paths:
+      - /interfaces/interface[name=*]/state
+    outputs:
+      - nats-iosxe-out
+
+  iosxe-if-stats:
+    mode: stream
+    stream-mode: sample
+    sample-interval: 15s
+    paths:
+      - /interfaces/interface[name=*]/state/counters
+    outputs:
+      - nats-iosxe-out
+
+  # Optional: BGP and system (uncomment if your IOS-XE image supports these)
+  # iosxe-bgp:
+  #   mode: stream
+  #   stream-mode: sample
+  #   sample-interval: 15s
+  #   paths:
+  #     - /network-instances/network-instance[name=*]/protocols/protocol[name=*]/bgp/state
+  #   outputs:
+  #     - nats-iosxe-out
+  # iosxe-system:
+  #   mode: stream
+  #   stream-mode: sample
+  #   sample-interval: 15s
+  #   paths:
+  #     - /system/memory/state
+  #   outputs:
+  #     - nats-iosxe-out
+
+outputs:
+  nats-iosxe-out:
+    type: jetstream
+    name: gnmic-ingress-iosxe
+    address: nats:4222
+    stream: iosxe
+    create-stream:
+      description: IOS-XE telemetry for C9k
+      subjects: []
+      storage: file
+      max-msgs: 3000000
+    subject-format: subscription.target
+    connect-time-wait: 2s
+    format: event
+    split-events: false
+    override-timestamps: false
+    num-workers: 1
+    write-timeout: 5s
+    debug: false
+    buffer-size: 0
+    enable-metrics: true
+    event-processors: []
+
+api-server:
+  address: :7890
+  timeout: 10s
+  enable-metrics: true
+  debug: false
+  healthz-disable-logging: true

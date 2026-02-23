@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!-- Prometheus remote-read and remote-write (https://clickhouse.com/docs/interfaces/prometheus) -->
+<!-- /metrics: built-in expose; /read and /write: TimeSeries table default.prometheus_ts -->
+<clickhouse>
+    <prometheus>
+        <port>9363</port>
+        <handlers>
+            <metrics>
+                <url>/metrics</url>
+                <handler>
+                    <type>expose_metrics</type>
+                    <metrics>true</metrics>
+                    <asynchronous_metrics>true</asynchronous_metrics>
+                    <events>true</events>
+                    <errors>true</errors>
+                    <histograms>true</histograms>
+                    <dimensional_metrics>true</dimensional_metrics>
+                </handler>
+            </metrics>
+            <remote_write>
+                <url>/write</url>
+                <handler>
+                    <type>remote_write</type>
+                    <database>default</database>
+                    <table>prometheus_ts</table>
+                </handler>
+            </remote_write>
+            <remote_read>
+                <url>/read</url>
+                <handler>
+                    <type>remote_read</type>
+                    <database>default</database>
+                    <table>prometheus_ts</table>
+                </handler>
+            </remote_read>
+        </handlers>
+    </prometheus>
+</clickhouse>

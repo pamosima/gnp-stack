@@ -1,3 +1,14 @@
+# ClickHouse native Prometheus integration (https://clickhouse.com/docs/interfaces/prometheus)
+# remote_write: Prometheus pushes scraped samples to ClickHouse TimeSeries table default.prometheus_ts
+# remote_read: Prometheus queries long-term data from ClickHouse (e.g. for Grafana long range)
+remote_write:
+  - url: http://gnp-stack-clickstack:9363/write
+    queue_config:
+      capacity: 10000
+      max_shards: 50
+remote_read:
+  - url: http://gnp-stack-clickstack:9363/read
+
 scrape_configs:
   - job_name: prometheus
     honor_timestamps: true
@@ -13,11 +24,22 @@ scrape_configs:
       - targets:
         - gnmic-ingestor:7890
         - gnmic-emitter:7890
+        # IOS-XE ingestor (present when using compose-iosxe.yaml)
+        - gnmic-ingestor-iosxe:7890
   - job_name: nats
     static_configs:
       - targets:
         - nats-exporter:7777
-#  - job_name: clickhouse
-#    static_configs:
-#      - targets:
-#        - clab-gnp-stack-clickhouse:9363
+  # IPFIX/flow collector (present when using compose-ipfix.yaml); use DNS (service name)
+  - job_name: ipfix
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+        - gnp-stack-ipfix:8081
+  # ClickHouse (ClickStack; present when using compose-clickstack.yaml)
+  - job_name: clickhouse
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+        - gnp-stack-clickstack:9363

@@ -1,0 +1,73 @@
+# Syslog → ClickHouse (see docs/SYSLOG-DESIGN.md).
+# Devices send syslog to this host on UDP 514.
+# Use socket source so we accept any UDP payload; parse with fallback for Cisco/non-RFC formats.
+
+[sources.syslog]
+type = "socket"
+mode = "udp"
+address = "0.0.0.0:514"
+# bytes = one event per UDP payload, no syslog framing (avoids parse failures at ingest)
+
+[sources.syslog.decoding]
+codec = "bytes"
+
+# Parse syslog with fallback: RFC-style → structured; else keep raw and use peer as host
+# Socket source sets peer address (IP:port) in .host by default; preserve it when parse fails.
+[transforms.syslog_parse]
+type = "remap"
+inputs = ["syslog"]
+source = '''
+# Preserve raw payload and peer: socket source puts UDP peer in .host (e.g. 198.18.170.200:41234)
+peer = .host
+raw_str = to_string!(.message)
+# Try standard syslog parse (RFC 3164/5424)
+parsed, parse_err = parse_syslog(raw_str)
+if parse_err != null {
+  # Non-RFC or Cisco-style: treat whole line as message, use peer as host
+  .message = raw_str
+  .raw = raw_str
+  .host = if is_null(.source_ip) { if is_null(peer) || peer == "" { "unknown" } else { peer } } else { .source_ip }
+  .facility = "local0"
+  .severity = "info"
+  .program = ""
+  .timestamp = now()
+} else {
+  . = merge(., parsed)
+  .program = if is_null(.appname) { "" } else { .appname }
+  .host = if is_null(.hostname) { if is_null(.host) { if is_null(.source_ip) { if is_null(peer) || peer == "" { "unknown" } else { peer } } else { .source_ip } } else { .host } } else { .hostname }
+  .message = if is_null(.message) { raw_str } else { .message }
+  .raw = raw_str
+  .timestamp = if is_null(.timestamp) { now() } else { .timestamp }
+  del(.appname)
+  del(.hostname)
+}
+# Normalize host: use IP only if it looks like "ip:port" so ClickHouse host column is device IP
+if is_string(.host) {
+  host_str = string!(.host)
+  if host_str != "unknown" && contains(host_str, ":") {
+    .host = split(host_str, ":")[0]
+  }
+}
+# Ensure timestamp is string for ClickHouse DateTime64 (YYYY-MM-DD HH:MM:SS or ISO)
+if !is_string(.timestamp) { .timestamp = format_timestamp!(.timestamp, format: "%Y-%m-%d %H:%M:%S") }
+'''
+
+# Shape event for default.syslog: host, facility, severity, program, message, raw, timestamp
+[transforms.syslog_to_clickhouse]
+type = "remap"
+inputs = ["syslog_parse"]
+source = '''
+# Already have .program, .host, .message, .raw, .timestamp, .facility, .severity from syslog_parse
+# Normalize empty host
+if is_null(.host) || .host == "" { .host = "unknown" }
+'''
+
+[sinks.clickhouse]
+type = "clickhouse"
+inputs = ["syslog_to_clickhouse"]
+endpoint = "http://gnp-stack-clickstack:8123"
+database = "default"
+table = "syslog"
+format = "json_each_row"
+skip_unknown_fields = true
+date_time_best_effort = true

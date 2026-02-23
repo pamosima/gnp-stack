@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<!-- GET http://host:8123/ returns this body (default is "Ok.") -->
+<clickhouse>
+    <http_server_default_response>ok</http_server_default_response>
+</clickhouse>

@@ -171,9 +171,9 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "gnmic_jetstream_output_msg_send_duration_ns",
+          "expr": "avg by (subject) (gnmic_jetstream_output_msg_send_duration_ns)",
           "interval": "",
-          "legendFormat": "{{publisher_id}}",
+          "legendFormat": "{{subject}}",
           "range": true,
           "refId": "A"
         }
@@ -347,9 +347,9 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "- rate(gnmic_jetstream_output_number_of_jetstream_msgs_sent_fail_total{}[2m])",
+          "expr": "- sum by (subject) (rate(gnmic_jetstream_output_number_of_jetstream_msgs_sent_fail_total{}[2m]))",
           "interval": "",
-          "legendFormat": "Fails: {{publisher_id}}/{{ subject }}",
+          "legendFormat": "Fails: {{subject}}",
           "range": true,
           "refId": "A"
         }
@@ -441,23 +441,122 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "rate(gnmic_jetstream_output_number_of_jetstream_msgs_sent_success_total{}[2m])",
+          "expr": "sum by (subject) (rate(gnmic_jetstream_output_number_of_jetstream_msgs_sent_success_total{}[2m]))",
           "interval": "",
-          "legendFormat": "{{ publisher_id }}/{{ subject }}",
+          "legendFormat": "{{subject}}",
           "range": true,
           "refId": "A"
         }
       ],
       "title": "Ingress to jetstream successes",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 20,
+      "panels": [],
+      "title": "IOS-XE (C9k)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "gNMI subscription status for IOS-XE pod switches (198.18.170.201–205).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "text": "Down", "color": "red" }, "1": { "text": "Up", "color": "green" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "id": 21,
+      "options": {
+        "alignValue": "left",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "mergeValues": true,
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "gnmic_target_up{name=~\"198.18.170.20[1-5]\"}",
+          "legendFormat": "{{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "IOS-XE target subscription up",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "description": "Interface counters (octets, errors) from IOS-XE when emitted by gNMIc. Filter by target if needed.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "id": 22,
+      "options": {
+        "legend": { "calcs": ["mean", "last"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "editorMode": "code",
+          "expr": "rate({__name__=~\".*in_octets\", source=~\"198.18.170.20[1-5]\"}[5m]) * 8",
+          "legendFormat": "{{source}} {{interface_name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "IOS-XE interface in-octets (rate)",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
   "schemaVersion": 37,
   "style": "dark",
-  "tags": [],
+  "tags": ["gnmic", "gnp-stack"],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Target",
+        "multi": true,
+        "name": "target",
+        "options": [],
+        "query": "198.18.170.201,198.18.170.202,198.18.170.203,198.18.170.204,198.18.170.205",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
