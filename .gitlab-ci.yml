@@ -1,0 +1,77 @@
+# netops-stack orchestrator pipeline (LTROPS-2341 style)
+# NetBox inventory; config collection + optional verify/deploy when apply playbooks exist.
+#
+# Set in GitLab CI/CD variables (masked): NETBOX_URL, NETBOX_TOKEN, ANSIBLE_USER, ANSIBLE_PASSWORD
+# (or use SSH key in runner image). Optional: ANSIBLE_IMAGE to override default image.
+
+default:
+  # Set ANSIBLE_IMAGE in GitLab CI/CD variables to your Ansible image (cisco.ios + netbox.netbox).
+  # Example: registry.gitlab.com/netops-stack/orchestrator/ansible:latest
+  image: ${ANSIBLE_IMAGE:-python:3.11-alpine}
+
+variables:
+  ANSIBLE_FORCE_COLOR: "true"
+  INVENTORY: ./ansible/inventory/nb_inventory.yml
+
+stages:
+  - collect
+  - verify
+  - deploy
+  - test
+
+# --- Config collection (scheduled or trigger) ---
+collect_configs:
+  stage: collect
+  extends: .collect
+  script:
+    - ansible-playbook -i $INVENTORY ./ansible/playbooks/collect_configs.yml
+  artifacts:
+    paths:
+      - collected/
+    expire_in: 7 days
+
+# --- Dry-run (verify): for future apply_config.yml — MCP can trigger ---
+apply_dry-run:
+  stage: verify
+  extends: .verify_deploy
+  script:
+    - ansible-playbook -i $INVENTORY ./ansible/playbooks/apply_config.yml --check
+      | tee ./ansible/ansible_dry_run_output.log
+  artifacts:
+    paths:
+      - ./ansible/ansible_dry_run_output.log
+  allow_failure: true
+  # Set allow_failure: false once apply_config.yml has real config tasks
+
+# --- Deploy: apply changes (manual only) ---
+apply_config:
+  stage: deploy
+  extends: .verify_deploy
+  script:
+    - ansible-playbook -i $INVENTORY ./ansible/playbooks/apply_config.yml
+  when: manual
+  allow_failure: false
+
+# --- Optional: test stage (e.g. pyATS) ---
+# test_network_state:
+#   stage: test
+#   image: your-pyats-image
+#   script:
+#     - pyats run job ./pyATS/job.py
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "trigger" && $SWITCH_PIPELINE == "true"
+
+# --- Job templates ---
+.collect:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $COLLECT_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $COLLECT_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "api"
+
+.verify_deploy:
+  variables:
+    INVENTORY: ./ansible/inventory/nb_inventory.yml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $DRY_RUN_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $DRY_RUN_PIPELINE == "true"

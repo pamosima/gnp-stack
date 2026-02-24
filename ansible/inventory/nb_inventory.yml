@@ -1,0 +1,35 @@
+---
+# NetBox dynamic inventory — single source of truth for config collection.
+# Pattern aligned with LTROPS-2341: https://github.com/tspuhler/LTROPS-2341
+#
+# Requires: netbox.netbox collection. Set in env or GitLab CI (masked):
+#   NETBOX_URL    — e.g. https://netbox.example.com
+#   NETBOX_TOKEN — API token
+#
+# Usage:
+#   ansible-playbook ansible/playbooks/collect_configs.yml -i ansible/inventory/nb_inventory.yml
+#
+# GitLab CI: set INVENTORY=./ansible/inventory/nb_inventory.yml and pass -i $INVENTORY
+
+plugin: netbox.netbox.nb_inventory
+api_endpoint: "{{ lookup('env', 'NETBOX_URL') }}"
+token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+validate_certs: false
+# Set to true if your NetBox uses a trusted TLS cert; or use env NETBOX_VERIFY_SSL=true
+config_context: false
+flatten_custom_fields: false
+site_data: true
+virtual_chassis_name: true
+group_names_raw: true
+
+# Only active devices. Restrict by role if needed: add e.g. "role: core-switch" or "role: access"
+query_filters:
+  - status: active
+
+group_by:
+  - sites
+  - device_roles
+
+# Optional: expose NetBox fields for playbooks (e.g. primary IP as ansible_host is set by plugin)
+compose:
+  primary_ip: primary_ip.address

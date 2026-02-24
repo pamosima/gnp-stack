@@ -1,0 +1,52 @@
+---
+# Collect running config from network devices and write to collected/<hostname>.txt
+# Inventory: NetBox only — use -i ansible/inventory/nb_inventory.yml (see LTROPS-2341 pattern).
+# Credentials: set via env or GitLab CI (NETBOX_URL, NETBOX_TOKEN; ANSIBLE_USER, ANSIBLE_PASSWORD or SSH key).
+#
+# Run from repo root:
+#   ansible-playbook ansible/playbooks/collect_configs.yml -i ansible/inventory/nb_inventory.yml
+# Limit to one host or group (NetBox group_by: sites, device_roles):
+#   ansible-playbook ansible/playbooks/collect_configs.yml -i ansible/inventory/nb_inventory.yml -l core-01
+
+- name: Collect device running configs
+  hosts: all
+  gather_facts: false
+
+  vars:
+    collected_dir: "{{ lookup('env', 'COLLECTED_DIR') | default('collected', true) }}"
+    collected_timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
+
+  tasks:
+    - name: Create collected directory
+      ansible.builtin.file:
+        path: "{{ collected_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Collect running config (Cisco IOS / IOS-XE)
+      when: ansible_network_os is defined and (ansible_network_os == 'cisco.ios.ios' or ansible_network_os is search('ios'))
+      block:
+        - name: Run show running-config
+          cisco.ios.ios_command:
+            commands: show running-config
+          register: running_config
+
+        - name: Write running config to file
+          ansible.builtin.copy:
+            content: "{{ running_config.stdout[0] if (running_config.stdout is sequence and running_config.stdout | length > 0) else (running_config.stdout | default('')) }}"
+            dest: "{{ collected_dir }}/{{ inventory_hostname }}.txt"
+            mode: "0644"
+
+    - name: Collect running config (generic network_cli)
+      when: ansible_network_os is not defined or not (ansible_network_os == 'cisco.ios.ios' or ansible_network_os is search('ios'))
+      block:
+        - name: Run show running-config via cli_command
+          ansible.netcommon.cli_command:
+            command: show running-config
+          register: running_config
+
+        - name: Write running config to file (generic)
+          ansible.builtin.copy:
+            content: "{{ running_config.stdout[0] if (running_config.stdout is sequence and running_config.stdout | length > 0) else (running_config.stdout | default('')) }}"
+            dest: "{{ collected_dir }}/{{ inventory_hostname }}.txt"
+            mode: "0644"

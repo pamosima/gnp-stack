@@ -1,0 +1,15 @@
+---
+# Placeholder for apply/dry-run pipeline. Replace with real config apply (e.g. ios_config, templates).
+# When run with --check (verify stage), shows what would change; deploy stage runs without --check.
+# Inventory: NetBox (same as collect). Use TARGET_HOST in pipeline vars to limit scope.
+
+- name: Apply config (placeholder)
+  hosts: "{{ (target_host is defined and target_host | length > 0) | ternary(target_host, 'all') }}"
+  gather_facts: false
+  vars:
+    target_host: "{{ lookup('env', 'TARGET_HOST') | default('', true) }}"
+  tasks:
+    - name: Placeholder — add your config tasks here
+      ansible.builtin.debug:
+        msg: "Apply playbook placeholder. Add ios_config/template tasks and re-run."
+      when: true

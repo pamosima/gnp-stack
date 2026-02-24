@@ -1,0 +1,11 @@
+# Ansible Galaxy collections required for collect_configs (and future diff/apply playbooks).
+# Install: ansible-galaxy collection install -r ansible/requirements.yml
+
+collections:
+  - name: cisco.ios
+    version: ">=4.0.0"
+  - name: ansible.netcommon
+    version: ">=5.0.0"
+  # Optional: for NetBox dynamic inventory
+  - name: netbox.netbox
+    version: ">=4.0.0"
