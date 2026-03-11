@@ -94,12 +94,12 @@ flowchart TB
 
 | NAF block | netops-stack components | In-repo / external |
 |-----------|-------------------------|---------------------|
-| **Collector** | gNMIc, Vector, IPFIX (optional) | In-repo (compose) |
-| **Observability** | Prometheus, ClickHouse, HyperDX | In-repo (compose) |
-| **Presentation** | Grafana, HyperDX, MCP assistant | In-repo + Cursor/MCP |
+| **Collector** | [gNMIc](gnmic/README.md), [Vector](vector/README.md), IPFIX (optional) | In-repo (compose) |
+| **Observability** | [Prometheus](prometheus/README.md), [ClickHouse](clickhouse/README.md), HyperDX | In-repo (compose) |
+| **Presentation** | [Grafana](grafana/README.md), HyperDX, [MCP assistant](netops-mcp-server/README.md) | In-repo + [LibreChat](netops-mcp-server/README.md) |
 | **Intent** | NetBox | External |
-| **Orchestrator** | GitLab CI/CD + Ansible + GitLab MCP | Extension ([gitlab/README.md](gitlab/README.md)) |
-| **Executor** | Ansible (SSH) | In-repo ([gitlab/ansible](gitlab/README.md)): apply, rollback |
+| **Orchestrator** | [GitLab CI/CD + Ansible](gitlab/README.md) + GitLab MCP | In-repo ([gitlab/](gitlab/README.md)) |
+| **Executor** | [Ansible (SSH)](gitlab/README.md) | In-repo ([gitlab/ansible](gitlab/README.md)): apply, rollback |
 
 - **Collector:** gNMIc (gNMI streaming), Vector (syslog UDP 514), optional IPFIX overlay. NATS between gNMIc and processors.
 - **Observability:** Prometheus (metrics, PromQL), ClickHouse + HyperDX (logs, e.g. `default.syslog`, metrics/traces). MCP correlates Intent with Observability.
