@@ -1,9 +1,28 @@
 .env
 .netops-stack.clab.yml.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# netops-mcp-server (runs in Docker; lockfile not needed in repo)
+netops-mcp-server/uv.lock
+
 clab-netops-stack/
 clickhouse/data
 clickhouse/logs
 
-# Ansible collected configs (CI stores as artifact or on separate branch)
+# Ansible: collected configs (CI stores as artifact or on separate branch)
 gitlab/ansible/collected/
 collected/
+
+# Ansible baseline configs and generated files (keep .gitkeep; CI/local produce .txt, .diff, .pre_rollback)
+gitlab/ansible/configs/baseline/*.txt
+gitlab/ansible/configs/baseline/*.diff
+gitlab/ansible/configs/baseline/*.pre_rollback
+
+# NATS JetStream runtime persistence (created when NATS runs)
+nats/datastore/jetstream/

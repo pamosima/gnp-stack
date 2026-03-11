@@ -1,5 +1,5 @@
 ---
-# Rollback devices to the collected baseline config (collected/<hostname>.txt).
+# Rollback devices to the baseline config (configs/baseline/<hostname>.txt).
 # Includes the same compare/diff logic (diff_baseline.yml) so the .diff file exists before we print or apply.
 #
 # Optional: Cisco "configure replace" for true replace (removes extra config) — see docs/CONFIG-REPLACE-ROLLBACK.md.
