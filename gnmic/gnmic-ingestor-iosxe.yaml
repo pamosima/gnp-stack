@@ -28,6 +28,7 @@ targets:
     subscriptions:
       - iosxe-if-state-sample
       - iosxe-if-stats
+      - iosxe-system
   198.18.170.202:
     port: "57400"
     skip-verify: true
@@ -36,6 +37,7 @@ targets:
     subscriptions:
       - iosxe-if-state-sample
       - iosxe-if-stats
+      - iosxe-system
   198.18.170.203:
     port: "57400"
     skip-verify: true
@@ -44,6 +46,7 @@ targets:
     subscriptions:
       - iosxe-if-state-sample
       - iosxe-if-stats
+      - iosxe-system
   198.18.170.204:
     port: "57400"
     skip-verify: true
@@ -52,6 +55,7 @@ targets:
     subscriptions:
       - iosxe-if-state-sample
       - iosxe-if-stats
+      - iosxe-system
   198.18.170.205:
     port: "57400"
     skip-verify: true
@@ -60,6 +64,7 @@ targets:
     subscriptions:
       - iosxe-if-state-sample
       - iosxe-if-stats
+      - iosxe-system
 
 subscriptions:
   # Interface state via SAMPLE (IOS-XE rejects ON_CHANGE with filter-type for these paths).
@@ -81,21 +86,25 @@ subscriptions:
     outputs:
       - nats-iosxe-out
 
-  # Optional: BGP and system (uncomment if your IOS-XE image supports these)
+  # Optional: system memory (and CPU if path supported by image).
+  # Use OpenConfig module prefix; without it gNMIc may not send this subscription (only interface subs appear in logs).
+  iosxe-system:
+    mode: stream
+    stream-mode: sample
+    sample-interval: 15s
+    paths:
+      - /openconfig-system:system/memory/state
+      # - /openconfig-system:system/cpus/cpu[index=*]/state  # Uncomment if IOS-XE supports OpenConfig CPU
+    outputs:
+      - nats-iosxe-out
+
+  # Optional: BGP (uncomment if your IOS-XE image supports this path)
   # iosxe-bgp:
   #   mode: stream
   #   stream-mode: sample
   #   sample-interval: 15s
   #   paths:
   #     - /network-instances/network-instance[name=*]/protocols/protocol[name=*]/bgp/state
-  #   outputs:
-  #     - nats-iosxe-out
-  # iosxe-system:
-  #   mode: stream
-  #   stream-mode: sample
-  #   sample-interval: 15s
-  #   paths:
-  #     - /system/memory/state
   #   outputs:
   #     - nats-iosxe-out
 

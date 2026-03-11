@@ -1,0 +1,2 @@
+# Keeps configs/baseline/ in Git. Collect playbook writes <hostname>.txt here.
+# Compare and rollback use these files as baseline; apply_config refreshes them after apply.

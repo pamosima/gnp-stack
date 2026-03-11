@@ -1,0 +1,11 @@
+# Ansible Galaxy collections for runner image (LTROPS-2341 + netops-stack collect)
+# cisco.ios, ansible.netcommon for collect_configs; netbox.netbox for inventory
+
+---
+collections:
+  - name: ansible.utils
+  - name: netbox.netbox
+  - name: cisco.ios
+    version: ">=4.0.0"
+  - name: ansible.netcommon
+    version: ">=5.0.0"

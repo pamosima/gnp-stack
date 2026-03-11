@@ -1,0 +1,72 @@
+# Shared diff logic: compare running config to baseline (configs/baseline).
+# Used by compare_configs.yml and rollback_configs.yml.
+# Expects vars: collected_dir, baseline_file, diff_output_file, temp_current.
+# Registers: baseline_stat, current_config, diff_result.
+#
+# Do NOT add a task that removes .diff when config differs (rc==1). compare_configs
+# needs .diff files to remain so CI can artifact them for the troubleshoot flow.
+
+- name: Remove existing .diff file before run (start fresh)
+  ansible.builtin.file:
+    path: "{{ diff_output_file }}"
+    state: absent
+  delegate_to: localhost
+
+- name: Check baseline file exists (on controller)
+  ansible.builtin.stat:
+    path: "{{ baseline_file }}"
+  register: baseline_stat
+  delegate_to: localhost
+
+- name: Get current running config (Cisco IOS, disable paging for full output)
+  when: baseline_stat.stat.exists | default(false)
+  cisco.ios.ios_command:
+    commands:
+      - terminal length 0
+      - show running-config
+  register: current_config
+
+- name: Write current config to temp file (on controller)
+  when: baseline_stat.stat.exists | default(false)
+  ansible.builtin.copy:
+    content: "{{ current_config.stdout[1] | default(current_config.stdout[0]) }}"
+    dest: "{{ temp_current }}"
+    mode: "0600"
+  delegate_to: localhost
+  check_mode: false   # run in --check (rollback) so diff has a file to read
+
+- name: Diff running config vs baseline
+  when: baseline_stat.stat.exists | default(false)
+  ansible.builtin.shell: |
+    diff -u "{{ baseline_file }}" "{{ temp_current }}"
+  register: diff_result
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  check_mode: false   # run in --check (rollback) so we get a real diff
+
+- name: Write diff to file when config differs
+  when: baseline_stat.stat.exists | default(false) and diff_result.rc == 1
+  ansible.builtin.copy:
+    content: |
+      --- baseline: {{ baseline_file }}
+      +++ current: running-config
+      {{ diff_result.stdout }}
+    dest: "{{ diff_output_file }}"
+    mode: "0644"
+  delegate_to: localhost
+  check_mode: false   # write file even in --check so rollback can grep and print +/- lines
+
+- name: Remove temp file
+  when: baseline_stat.stat.exists | default(false)
+  ansible.builtin.file:
+    path: "{{ temp_current }}"
+    state: absent
+  delegate_to: localhost
+
+- name: Remove stale diff file when config matches
+  when: baseline_stat.stat.exists | default(false) and diff_result.rc == 0
+  ansible.builtin.file:
+    path: "{{ diff_output_file }}"
+    state: absent
+  delegate_to: localhost

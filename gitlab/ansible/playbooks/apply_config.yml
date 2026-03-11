@@ -1,0 +1,65 @@
+---
+# Apply desired config from ansible/configs/desired/<hostname>.txt to IOS-XE devices.
+# Used when troubleshooting (e.g. with MCP) finds a config change: put the desired
+# config in the repo, then run via GitLab pipeline — dry-run first, manual apply after review.
+#
+# Pipeline: verify stage runs with --check (dry-run); deploy stage applies (manual).
+# Limit to one host: -l sw11-1 or set TARGET_HOST in pipeline variables.
+#
+# Dry-run:  ansible-playbook ... apply_config.yml --check -e ansible_user=... -e ansible_password=...
+# Apply:    ansible-playbook ... apply_config.yml -e ansible_user=... -e ansible_password=...
+# Limit:   ansible-playbook ... apply_config.yml -l sw11-1 ...
+
+- name: Apply desired config to devices
+  hosts: all
+  gather_facts: false
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: 'false'
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    configs_dir: "{{ playbook_dir }}/../configs/desired"
+    desired_config_file: "{{ configs_dir }}/{{ inventory_hostname }}.txt"
+    desired_config_src: "{{ desired_config_file }}"
+
+  tasks:
+    - name: Check desired config exists (ansible/configs/desired)
+      ansible.builtin.stat:
+        path: "{{ desired_config_file }}"
+      register: desired_stat
+      delegate_to: localhost
+
+    - name: Report no desired config for {{ inventory_hostname }}
+      ansible.builtin.debug:
+        msg: "No desired config at ansible/configs/desired/{{ inventory_hostname }}.txt. Add a file (e.g. from MCP) and re-run."
+      when: not desired_stat.stat.exists | default(false)
+
+    - name: Apply desired config ({{ inventory_hostname }})
+      when: desired_stat.stat.exists | default(false)
+      cisco.ios.ios_config:
+        src: "{{ desired_config_src }}"
+        replace: block
+        save_when: modified
+        diff_against: running
+      register: apply_result
+
+    - name: Show desired config (dry-run)
+      when: desired_stat.stat.exists | default(false) and ansible_check_mode | default(false)
+      block:
+        - name: Read desired config file
+          ansible.builtin.slurp:
+            src: "{{ desired_config_file }}"
+          register: _desired_slurp
+          delegate_to: localhost
+
+        - name: Desired config (would be applied)
+          ansible.builtin.debug:
+            msg: "{{ item }}"
+          loop: "{{ (_desired_slurp.content | b64decode | trim | split('\n')) | default([]) }}"
+          when: _desired_slurp.content is defined
+
+    - name: Apply complete for {{ inventory_hostname }}
+      ansible.builtin.debug:
+        msg: "Desired config applied. Run 'collect_configs' to refresh baseline if needed."
+      when: desired_stat.stat.exists | default(false) and (apply_result is changed | default(false)) and not ansible_check_mode

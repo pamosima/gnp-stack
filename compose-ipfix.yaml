@@ -13,9 +13,9 @@ networks:
         - subnet: 192.168.60.0/24
 
 services:
-  gnp-stack-ipfix:
+  netops-stack-ipfix:
     image: netsampler/goflow2:latest
-    container_name: gnp-stack-ipfix
+    container_name: netops-stack-ipfix
     ports:
       - "4739:4739/udp"   # IPFIX
       - "2055:2055/udp"   # NetFlow v9

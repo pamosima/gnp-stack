@@ -6,7 +6,7 @@
 #   docker compose -f compose.yaml -f compose-clickstack.yaml up -d
 # Then open http://<host>:8080 to create a user and use the HyperDX UI.
 # If you use a different port (e.g. 8081) or access by IP, set HYPERDX_APP_URL so post-login redirects work:
-#   HYPERDX_APP_URL=http://${GNP_STACK_HOST:-localhost}:8081
+#   HYPERDX_APP_URL=http://${NETOPS_STACK_HOST:-localhost}:8081
 #
 # Ports:
 #   8080  - HyperDX UI (or 8081 if 8080 is in use)
@@ -17,7 +17,7 @@
 services:
   clickstack:
     image: clickhouse/clickstack-all-in-one:latest
-    container_name: gnp-stack-clickstack
+    container_name: netops-stack-clickstack
     command: ["clickstack"]
     ports:
       - "8080:8080"   # HyperDX UI
@@ -46,12 +46,12 @@ services:
   # One-off: create Prometheus TimeSeries table in ClickStack's ClickHouse
   clickstack-init-prometheus:
     image: clickhouse/clickhouse-server:24.8
-    container_name: gnp-stack-clickstack-init-prometheus
+    container_name: netops-stack-clickstack-init-prometheus
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         sleep 10
-        clickhouse-client --host gnp-stack-clickstack < /init/prometheus_ts.sql
+        clickhouse-client --host netops-stack-clickstack < /init/prometheus_ts.sql
         echo "prometheus_ts ready"
     volumes:
       - ./clickhouse/init/prometheus_ts.sql:/init/prometheus_ts.sql:ro

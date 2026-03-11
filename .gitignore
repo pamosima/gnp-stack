@@ -1,5 +1,9 @@
 .env
-.gnp-stack.clab.yml.bak
-clab-gnp-stack/
+.netops-stack.clab.yml.bak
+clab-netops-stack/
 clickhouse/data
 clickhouse/logs
+
+# Ansible collected configs (CI stores as artifact or on separate branch)
+gitlab/ansible/collected/
+collected/

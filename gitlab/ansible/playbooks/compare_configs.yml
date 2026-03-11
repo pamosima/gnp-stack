@@ -1,0 +1,47 @@
+---
+# Fetch running config from devices and compare to the baseline saved in configs/baseline/<hostname>.txt.
+# Baseline = ansible/configs/baseline/<host>.txt (from repo or from collect artifact). Compare playbook
+# fetches running config via SSH and diffs against that baseline.
+# Uses shared diff_baseline.yml; writes .diff when config differs.
+#
+# IMPORTANT: Do not add any task that removes .diff files after the include_tasks.
+# CI artifacts: paths compare_output.log and configs/baseline/*.diff (relative to ansible/).
+#
+# Run: ansible-playbook -i ./inventory/nb_inventory.yml ./playbooks/compare_configs.yml -e ansible_user=... -e ansible_password=...
+# Or: ./run-compare-local.sh
+
+- name: Compare running config to collected baseline
+  hosts: all
+  gather_facts: false
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: 'false'
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    # Same folder as baseline config: configs/baseline under ansible/, so ansible/configs/baseline/*.diff
+    collected_dir: "{{ lookup('env', 'COLLECTED_DIR') | default('configs/baseline', true) }}"
+    baseline_file: "{{ collected_dir }}/{{ inventory_hostname }}.txt"
+    diff_output_file: "{{ collected_dir }}/{{ inventory_hostname }}.diff"
+    temp_current: "/tmp/current_{{ inventory_hostname }}.txt"
+
+  tasks:
+    - name: Include compare/diff logic (writes .diff when config differs)
+      ansible.builtin.include_tasks: diff_baseline.yml
+
+    - name: Report no baseline for {{ inventory_hostname }}
+      ansible.builtin.debug:
+        msg: "No baseline at {{ baseline_file }}. Run collect_configs.yml first."
+      when: not baseline_stat.stat.exists | default(true)
+
+    - name: Config matches baseline ({{ inventory_hostname }})
+      ansible.builtin.debug:
+        msg: "No changes."
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 0
+
+    - name: Config differs from baseline ({{ inventory_hostname }})
+      ansible.builtin.debug:
+        msg: "Diff written to {{ diff_output_file }} (artifacted for MCP/troubleshoot)."
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 1
+
+    # Do NOT add a task here that removes .diff files. CI needs configs/baseline/*.diff for artifacts.

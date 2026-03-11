@@ -65,7 +65,7 @@ if is_null(.host) || .host == "" { .host = "unknown" }
 [sinks.clickhouse]
 type = "clickhouse"
 inputs = ["syslog_to_clickhouse"]
-endpoint = "http://gnp-stack-clickstack:8123"
+endpoint = "http://netops-stack-clickstack:8123"
 database = "default"
 table = "syslog"
 format = "json_each_row"

@@ -1,4 +1,6 @@
-gnp-stack
+netops-stack
+
+Copyright (c) 2026 Cisco and/or its affiliates.
 
 This project is provided under the Cisco Sample Code License, Version 1.1.
 See the LICENSE file for the full license text.
@@ -7,5 +9,7 @@ This project is example code for demonstration and learning purposes. It is not
 officially supported by Cisco Systems and is not intended for production use
 without proper testing and customization for your specific environment.
 
-Third-party components used in this project are subject to their own licenses.
-See component documentation and source for applicable terms.
+This project may include subcomponents with separate copyright notices and
+license terms. Your use of those subcomponents is subject to the terms and
+conditions of each subcomponent's license, as noted in the LICENSE file and
+component documentation.

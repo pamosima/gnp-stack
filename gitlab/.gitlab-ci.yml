@@ -1,0 +1,290 @@
+# Copyright (c) 2026 Cisco and/or its affiliates.
+#
+# This software is licensed to you under the terms of the Cisco Sample
+# Code License, Version 1.1 (the "License"). You may obtain a copy of the
+# License at
+#
+#                https://developer.cisco.com/docs/licenses
+#
+# All use of the material herein must be in accordance with the terms of the
+# License. All rights not expressly granted by the License are reserved.
+# Unless required by applicable law or agreed to separately in writing,
+# software distributed under the License is distributed on an "AS IS"
+# BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+# netops-stack orchestrator. Trigger with variables via API (GITLAB_TOKEN) or Run pipeline (web).
+# Set in GitLab CI/CD: NETBOX_URL, NETBOX_TOKEN, ANSIBLE_USER, ANSIBLE_PASSWORD.
+#
+# Pipelines (trigger with variables; push does not run collect/compare):
+#   Compare (drift):  COMPARE_ONLY=true  or  PIPELINE_TYPE=compare
+#   Rollback:         ROLLBACK_PIPELINE=true  or  PIPELINE_TYPE=rollback  (+ optional TARGET_HOST)
+#   Collect:          PIPELINE_TYPE=collect  (optional COMMIT_COLLECTED=true → MR)
+#   Apply:            DRY_RUN_PIPELINE=true  or  PIPELINE_TYPE=apply  (+ optional TARGET_HOST)
+# MCP/NetBox use POST projects/:id/pipeline (api source); variables in JSON body.
+
+default:
+  image: 198.18.134.23:5050/netops-stack/network-automation:latest
+
+variables:
+  ANSIBLE_FORCE_COLOR: "true"
+  ANSIBLE_HOST_KEY_CHECKING: "false"
+
+workflow:
+  rules:
+    # Evaluate pipeline source first so explicit runs (web, api, trigger) always run even when tip commit has [skip ci]
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "api"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "trigger"
+      when: always
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
+    - if: $CI_COMMIT_MESSAGE =~ /\[skip ci\]|\[ci skip\]/
+      when: never
+    - when: always
+
+stages:
+  - collect
+  - verify
+  - deploy
+
+# --- Collect: fetch running configs → ansible/configs/baseline/*.txt; optional commit/MR ---
+collect_configs:
+  stage: collect
+  extends: .collect
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "api" && $PIPELINE_TYPE == "collect"
+    - if: $CI_PIPELINE_SOURCE == "api" && $COLLECT_PIPELINE == "true" && $PIPELINE_TYPE != "compare" && $COMPARE_ONLY != "true"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $PIPELINE_TYPE == "collect"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $COLLECT_PIPELINE == "true" && $PIPELINE_TYPE != "compare" && $COMPARE_ONLY != "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $PIPELINE_TYPE == "collect"
+    - if: $CI_PIPELINE_SOURCE == "web" && $COLLECT_PIPELINE == "true" && $PIPELINE_TYPE != "compare" && $COMPARE_ONLY != "true"
+  script:
+    - export ANSIBLE_HOST_KEY_CHECKING=False
+    - ansible-playbook -i $INVENTORY ./playbooks/collect_configs.yml -e "ansible_user=${ANSIBLE_USER}" -e "ansible_password=${ANSIBLE_PASSWORD}"
+    - cd "${CI_PROJECT_DIR}"
+    - |
+      if [ "${COMMIT_COLLECTED}" = "true" ]; then
+        if [ -z "${GITLAB_PUSH_TOKEN}" ]; then
+          echo "COMMIT_COLLECTED=true but GITLAB_PUSH_TOKEN is not set."
+          exit 1
+        fi
+        git config user.email "ci@gitlab"
+        git config user.name "GitLab CI"
+        GIT_HOST="${CI_SERVER_URL#*://}"
+        GIT_PROTO="${CI_SERVER_URL%%://*}"
+        BRANCH_NAME="ci/baseline-${CI_PIPELINE_ID}"
+        git remote set-url origin "${GIT_PROTO}://gitlab-ci-token:${GITLAB_PUSH_TOKEN}@${GIT_HOST}/${CI_PROJECT_PATH}.git"
+        git checkout -B "${BRANCH_NAME}"
+        git add ansible/configs/baseline/*.txt 2>/dev/null || true
+        if ! git diff --staged --quiet; then
+          git commit -m "CI: update config baseline (pipeline ${CI_PIPELINE_ID}) [skip ci]"
+          git push origin "${BRANCH_NAME}"
+          export BRANCH_NAME GITLAB_PUSH_TOKEN
+          python3 -c "
+      import os, urllib.request, json, sys
+      token = os.environ.get('GITLAB_PUSH_TOKEN', '')
+      url = os.environ.get('CI_API_V4_URL', '').rstrip('/') + '/projects/' + str(os.environ.get('CI_PROJECT_ID', '')) + '/merge_requests'
+      data = json.dumps({'source_branch': os.environ.get('BRANCH_NAME'), 'target_branch': 'main', 'title': 'CI: Update config baseline (pipeline ' + os.environ.get('CI_PIPELINE_ID', '') + ')'}).encode()
+      req = urllib.request.Request(url, data=data, headers={'PRIVATE-TOKEN': token, 'Content-Type': 'application/json'}, method='POST')
+      try:
+        with urllib.request.urlopen(req) as r:
+          mr = json.loads(r.read().decode())
+          print('Merge request created:', mr.get('web_url', mr.get('id')))
+      except urllib.error.HTTPError as e:
+        if e.code == 409: print('MR for branch already exists.')
+        else: raise
+          "
+        else
+          echo "No changes; skipping push and MR."
+        fi
+      fi
+  artifacts:
+    paths:
+      - ansible/configs/baseline/
+    expire_in: 7 days
+
+# --- Compare: drift vs repo baseline ansible/configs/baseline/*.txt; optional commit .diff ---
+compare_configs:
+  stage: verify
+  extends: .compare
+  variables:
+    COLLECTED_DIR: "${CI_PROJECT_DIR}/ansible/configs/baseline"
+  script:
+    - ansible-playbook -i $INVENTORY ./playbooks/compare_configs.yml -e "ansible_user=${ANSIBLE_USER}" -e "ansible_password=${ANSIBLE_PASSWORD}" -e "collected_dir=${COLLECTED_DIR}" | tee compare_output.log
+    - cd "${CI_PROJECT_DIR}"
+    - ls -la ansible/compare_output.log ansible/configs/baseline/*.diff 2>/dev/null || true
+    - |
+      if [ "${COMMIT_DIFFS}" = "true" ]; then
+        git config user.email "ci@gitlab"
+        git config user.name "GitLab CI"
+        GIT_HOST="${CI_SERVER_URL#*://}"
+        GIT_PROTO="${CI_SERVER_URL%%://*}"
+        PUSH_TOKEN="${GITLAB_PUSH_TOKEN:-$CI_JOB_TOKEN}"
+        git remote set-url origin "${GIT_PROTO}://gitlab-ci-token:${PUSH_TOKEN}@${GIT_HOST}/${CI_PROJECT_PATH}.git"
+        git checkout -B "${CI_COMMIT_REF_NAME}"
+        git add ansible/configs/baseline/*.diff ansible/compare_output.log 2>/dev/null || true
+        git diff --staged --quiet || git commit -m "CI: persist compare diffs and log [skip ci]"
+        git push origin "${CI_COMMIT_REF_NAME}" || true
+      fi
+  artifacts:
+    paths:
+      - ansible/compare_output.log
+      - ansible/configs/baseline/*.diff
+    expire_in: 7 days
+  allow_failure: true
+
+# --- Apply: dry-run then manual apply ---
+apply_dry-run:
+  stage: verify
+  extends: .apply
+  script:
+    - '[ -n "$TARGET_HOST" ] && LIMIT="-l $TARGET_HOST" || LIMIT=""'
+    - ansible-playbook -i $INVENTORY ./playbooks/apply_config.yml $LIMIT --check --diff -e "ansible_user=${ANSIBLE_USER}" -e "ansible_password=${ANSIBLE_PASSWORD}" | tee ansible_dry_run_output.log
+  artifacts:
+    paths:
+      - ansible/ansible_dry_run_output.log
+  allow_failure: true
+
+apply_config:
+  stage: deploy
+  extends: .apply
+  needs: [apply_dry-run]
+  script:
+    - '[ -n "$TARGET_HOST" ] && LIMIT="-l $TARGET_HOST" || LIMIT=""'
+    - ansible-playbook -i $INVENTORY ./playbooks/apply_config.yml $LIMIT -e "ansible_user=${ANSIBLE_USER}" -e "ansible_password=${ANSIBLE_PASSWORD}"
+    - ansible-playbook -i $INVENTORY ./playbooks/collect_configs.yml $LIMIT -e "ansible_user=${ANSIBLE_USER}" -e "ansible_password=${ANSIBLE_PASSWORD}"
+    - cd "${CI_PROJECT_DIR}"
+    - if [ -n "$TARGET_HOST" ]; then rm -f "ansible/configs/desired/${TARGET_HOST}.txt"; else rm -f ansible/configs/desired/*.txt; fi
+    - git config user.email "ci@gitlab"
+    - git config user.name "GitLab CI"
+    - 'GIT_HOST="${CI_SERVER_URL#*://}" && GIT_PROTO="${CI_SERVER_URL%%://*}" && PUSH_TOKEN="${GITLAB_PUSH_TOKEN:-$CI_JOB_TOKEN}" && git remote set-url origin "${GIT_PROTO}://gitlab-ci-token:${PUSH_TOKEN}@${GIT_HOST}/${CI_PROJECT_PATH}.git"'
+    - git checkout -B "${CI_COMMIT_REF_NAME}"
+    - git add ansible/configs/baseline/
+    - git add -u ansible/configs/desired/
+    - 'git diff --staged --quiet || git commit -m "CI - after apply_config refresh baseline and remove desired config [skip ci]"'
+    - git push origin "${CI_COMMIT_REF_NAME}" || true
+  when: manual
+  allow_failure: false
+
+# --- Rollback: verify (dry-run) then manual apply ---
+# Optional (configure replace from GitLab): set ROLLBACK_USE_CONFIGURE_REPLACE=true and either
+#   ROLLBACK_BASELINE_URL_BASE (e.g. http://gitlab/-/raw/main/ansible/configs/baseline) or ROLLBACK_BASELINE_URL (full URL).
+rollback_verify:
+  stage: verify
+  extends: .rollback
+  script:
+    - |
+      ROLLBACK_EXTRA=""
+      if [ "${ROLLBACK_USE_CONFIGURE_REPLACE}" = "true" ]; then
+        ROLLBACK_EXTRA="-e rollback_use_configure_replace=true"
+        [ -n "${ROLLBACK_BASELINE_URL_BASE}" ] && ROLLBACK_EXTRA="${ROLLBACK_EXTRA} -e rollback_baseline_url_base=${ROLLBACK_BASELINE_URL_BASE}"
+        [ -n "${ROLLBACK_BASELINE_URL}" ] && ROLLBACK_EXTRA="${ROLLBACK_EXTRA} -e rollback_baseline_url=${ROLLBACK_BASELINE_URL}"
+      fi
+      ansible-playbook -i $INVENTORY ./playbooks/rollback_configs.yml --check -e "ansible_user=${ANSIBLE_USER}" -e "ansible_password=${ANSIBLE_PASSWORD}" $ROLLBACK_EXTRA | tee rollback_dry_run_output.log
+  artifacts:
+    paths:
+      - ansible/rollback_dry_run_output.log
+  allow_failure: true
+
+rollback_apply:
+  stage: deploy
+  extends: .rollback
+  needs: [rollback_verify]
+  script:
+    - |
+      ROLLBACK_EXTRA=""
+      if [ "${ROLLBACK_USE_CONFIGURE_REPLACE}" = "true" ]; then
+        ROLLBACK_EXTRA="-e rollback_use_configure_replace=true"
+        [ -n "${ROLLBACK_BASELINE_URL_BASE}" ] && ROLLBACK_EXTRA="${ROLLBACK_EXTRA} -e rollback_baseline_url_base=${ROLLBACK_BASELINE_URL_BASE}"
+        [ -n "${ROLLBACK_BASELINE_URL}" ] && ROLLBACK_EXTRA="${ROLLBACK_EXTRA} -e rollback_baseline_url=${ROLLBACK_BASELINE_URL}"
+      fi
+      ansible-playbook -i $INVENTORY ./playbooks/rollback_configs.yml -e "ansible_user=${ANSIBLE_USER}" -e "ansible_password=${ANSIBLE_PASSWORD}" $ROLLBACK_EXTRA
+    - cd "${CI_PROJECT_DIR}"
+    - |
+      git config user.email "ci@gitlab"
+      git config user.name "GitLab CI"
+      GIT_HOST="${CI_SERVER_URL#*://}"
+      GIT_PROTO="${CI_SERVER_URL%%://*}"
+      PUSH_TOKEN="${GITLAB_PUSH_TOKEN:-$CI_JOB_TOKEN}"
+      git remote set-url origin "${GIT_PROTO}://gitlab-ci-token:${PUSH_TOKEN}@${GIT_HOST}/${CI_PROJECT_PATH}.git"
+      git checkout -B "${CI_COMMIT_REF_NAME}"
+    - rm -f ansible/configs/baseline/*.diff
+    - |
+      for f in $(git diff --name-only --diff-filter=D -- ansible/configs/baseline/); do git add "$f"; done
+      git diff --staged --quiet || git commit -m "CI: remove compare diffs after rollback [skip ci]"
+      git push origin "${CI_COMMIT_REF_NAME}" || true
+  when: manual
+  allow_failure: false
+
+# --- Hidden job templates (api, trigger, web; variables gate which pipeline runs) ---
+
+.collect:
+  variables:
+    INVENTORY: ./inventory/nb_inventory.yml
+  before_script:
+    - cd ./ansible/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "api" && $PIPELINE_TYPE == "collect"
+    - if: $CI_PIPELINE_SOURCE == "api" && $COLLECT_PIPELINE == "true" && $PIPELINE_TYPE != "compare" && $COMPARE_ONLY != "true"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $PIPELINE_TYPE == "collect"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $COLLECT_PIPELINE == "true" && $PIPELINE_TYPE != "compare" && $COMPARE_ONLY != "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $PIPELINE_TYPE == "collect"
+    - if: $CI_PIPELINE_SOURCE == "web" && $COLLECT_PIPELINE == "true" && $PIPELINE_TYPE != "compare" && $COMPARE_ONLY != "true"
+
+# Fallback: if variables are stripped, still run compare so pipeline is not empty.
+.compare:
+  variables:
+    INVENTORY: ./inventory/nb_inventory.yml
+  before_script:
+    - cd ./ansible/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      when: never
+    - if: $PIPELINE_TYPE == "collect"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "api" && $COMPARE_ONLY == "true"
+    - if: $CI_PIPELINE_SOURCE == "api" && $PIPELINE_TYPE == "compare"
+    - if: $CI_PIPELINE_SOURCE == "api" && $COLLECT_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $COMPARE_ONLY == "true"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $PIPELINE_TYPE == "compare"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $COLLECT_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $COMPARE_ONLY == "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $PIPELINE_TYPE == "compare"
+    - if: $CI_PIPELINE_SOURCE == "web" && $COLLECT_PIPELINE == "true"
+    # Fallback only when not explicitly running rollback/apply/collect (so rollback-only runs 2 jobs, not 3)
+    - if: $CI_PIPELINE_SOURCE == "api" && $ROLLBACK_PIPELINE != "true" && $PIPELINE_TYPE != "rollback" && $DRY_RUN_PIPELINE != "true" && $PIPELINE_TYPE != "apply" && $PIPELINE_TYPE != "collect"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $ROLLBACK_PIPELINE != "true" && $PIPELINE_TYPE != "rollback" && $DRY_RUN_PIPELINE != "true" && $PIPELINE_TYPE != "apply" && $PIPELINE_TYPE != "collect"
+    - if: $CI_PIPELINE_SOURCE == "web" && $ROLLBACK_PIPELINE != "true" && $PIPELINE_TYPE != "rollback" && $DRY_RUN_PIPELINE != "true" && $PIPELINE_TYPE != "apply" && $PIPELINE_TYPE != "collect"
+
+.apply:
+  variables:
+    INVENTORY: ./inventory/nb_inventory.yml
+  before_script:
+    - cd ./ansible/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "api" && $DRY_RUN_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "api" && $PIPELINE_TYPE == "apply"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $DRY_RUN_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $PIPELINE_TYPE == "apply"
+    - if: $CI_PIPELINE_SOURCE == "web" && $DRY_RUN_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $PIPELINE_TYPE == "apply"
+
+.rollback:
+  variables:
+    INVENTORY: ./inventory/nb_inventory.yml
+  before_script:
+    - cd ./ansible/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "api" && $ROLLBACK_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "api" && $PIPELINE_TYPE == "rollback"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $ROLLBACK_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "trigger" && $PIPELINE_TYPE == "rollback"
+    - if: $CI_PIPELINE_SOURCE == "web" && $ROLLBACK_PIPELINE == "true"
+    - if: $CI_PIPELINE_SOURCE == "web" && $PIPELINE_TYPE == "rollback"

@@ -1,0 +1,61 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+{
+  "manifestVersion": "2.0.0",
+  "signatureType": "grafana",
+  "signedByOrg": "grafana",
+  "signedByOrgName": "Grafana Labs",
+  "plugin": "grafana-pyroscope-app",
+  "version": "1.17.0",
+  "time": 1771410676789,
+  "keyId": "7e4d0c6a708866e7",
+  "files": {
+    "776.js.map": "19897062214472011a0da93466d4550afe5022b271d85c3ffa8d5a602b14f83f",
+    "e79edcfbe2068fae2364.svg": "89ea40b6dcf2dc8dfe146f8acac42b604e4d3c3dad03e539551d58a21f80654d",
+    "LICENSE": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+    "580.js": "00bb21947b510394f1c7baa8ee6fcab3a1e961984dba2a104ef2f5a22802da49",
+    "module.js": "b297e9c1aa8481e678bbf13fbcf570d51f263f6a45b9a1ea05db7266132253a9",
+    "909.js": "24a0cc59a876f4cfa66eedce2a497b294b09e6fa33e27257e6470379b8b68868",
+    "156.js.map": "0e4d02dd4d7057318a584579fc32226032ae3bdb7a9da2167887b6dc6940b98c",
+    "CHANGELOG.md": "7aa6e32dd595deff502b4ca360231d122afa4aefd3300f681eadc42fd81c4a11",
+    "shared/infrastructure/profile-metrics/profile-metrics.json": "2989d3bedd209ccae3f822934be696b9579a539a3254374e4b97ecceee4a7bb9",
+    "plugin.json": "e3df55f90c81739464e524f743874030ae79d2c58044a5bbed8183bde8d45ca9",
+    "156.js": "2ff18c00d554f352e1c2e0b265d884bf57a086e4ce4c05886faed7649c73daa3",
+    "814.js.map": "d6dc6a2a4e1e6f05798a4100fdda558b20bd118c3ed0d6401193b833e244a89c",
+    "580.js.map": "b5eda35bc5b940563d6b6184a74bf24b30c313b81f598601f2d37a9b900ba25f",
+    "944c737f589d02ecf603.svg": "a0c8acbcf5685a8950ce1c67722579dc745585fb0d668ce965327955e5e829ff",
+    "module.js.map": "0d1a9c6355e8b76cd24807ad88c2e1dd33cac6494bbe3f4a1f7e9081226bb5f2",
+    "909.js.map": "855a6e0d39e32f386854f4fe51054352304774644559c04ecff8920be7491a7e",
+    "814.js": "ef4dee870c8d594160e4318e5d154956f1bcb8526114a5278cb6154193ebeaaf",
+    "72.js.map": "18c1d4d6de14095fb0c671fb7a0a66098cd6914115f3ef5fe1d7beee216bdd22",
+    "72.js": "f1ca6d070254a35c977a213f96e2d34324d0eb5a0c8973258ca24e25a55ca9f1",
+    "README.md": "9808cbc6131d2512117f366e51f5ede7aeea5b73a852f0763ba2d05ce7334dd0",
+    "814.js.LICENSE.txt": "7f120b36a6d7ef14095f9914b827edc456ef54f2c096a4cb2d7b98e797a25982",
+    "909.js.LICENSE.txt": "d368eff33598ec5731576ecec571304a2ab5561e8275340fdb0b8df0ba1a009d",
+    "776.js": "2bdf1d9782a7f1f509034cf8fdde797cb122af2f884a1d17ac8123566947db6f",
+    "pages/ProfilesExplorerView/components/SceneByVariableRepeaterGrid/components/SceneEmptyState/ui/img/grot-404-light.svg": "89ea40b6dcf2dc8dfe146f8acac42b604e4d3c3dad03e539551d58a21f80654d",
+    "pages/ProfilesExplorerView/components/SceneByVariableRepeaterGrid/components/SceneEmptyState/ui/img/grot-404-dark.svg": "a0c8acbcf5685a8950ce1c67722579dc745585fb0d668ce965327955e5e829ff",
+    "img/58f0b0e1cfa063e4b662.png": "87598baf93192a8dc7ee923e0af6a0c5e4b3359b00b7391fc9530108feb7aac0",
+    "img/bafee50693eb02088442.png": "66d5311c4ca898cdae2d0a23a414f04a7c49052f0035c1a2906b9e9bb15d628d",
+    "img/9c9cdd5175734d579007.png": "ab65c374d22c5faad274f6b8b2ab00bf404bb988803f09d375326cd692fce821",
+    "img/decrease-latency.png": "f626933745990d2fef3d90e995f38d5e28e4754c002cf031379db7588c8fd70c",
+    "img/logo.svg": "559341996765c2d5639a2818d76bcd88ffe252212193a573f2f9f77dae5064dd",
+    "img/resolve-incidents.png": "66d5311c4ca898cdae2d0a23a414f04a7c49052f0035c1a2906b9e9bb15d628d",
+    "img/reduce-costs.png": "ab65c374d22c5faad274f6b8b2ab00bf404bb988803f09d375326cd692fce821",
+    "img/hero-image.png": "87598baf93192a8dc7ee923e0af6a0c5e4b3359b00b7391fc9530108feb7aac0",
+    "img/8cdf4d2e2df8326311ab.gif": "72afdd2fcad33e13db33af765a3fae9528315d78391684190dd23e40bd688852",
+    "img/61b4cf746a6f58780f27.png": "f626933745990d2fef3d90e995f38d5e28e4754c002cf031379db7588c8fd70c",
+    "img/diff-view-how-to.gif": "72afdd2fcad33e13db33af765a3fae9528315d78391684190dd23e40bd688852"
+  }
+}
+-----BEGIN PGP SIGNATURE-----
+
+wsA/BAETCgBtBYJplZT0CRB+TQxqcIhm50UUAAAAAAAcACBzYWx0QG5vdGF0
+aW9ucy5vcGVucGdwanMub3Jn64v4EVG2Z4T09M7ZnX7IOk0a6sGzyDjD5sOB
+wug28lwWIQTzOyW2kQdOhGNlcPN+TQxqcIhm5wAAnVUCCQHwg6GYVZdqA+cK
+vsjY4Q2p9ZOKU6GasVOInK97WbgfEJfHdK47+tnaF8ypy7bqBzbCNoDGamW4
+P+DfqeFxqroawQIJAbiCt5fOxKIHFtJEQtF3ReYLC9VcfzRAThs0KYYwEuYt
+XuE7OqZQ0h59ilqEINQCJux3FsZux7yp9IKcRre/XsIM
+=dVMx
+-----END PGP SIGNATURE-----

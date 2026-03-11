@@ -16,12 +16,12 @@ services:
   # One-off: create default.syslog table in ClickStack's ClickHouse
   clickstack-syslog-init:
     image: clickhouse/clickhouse-server:24.8
-    container_name: gnp-stack-clickstack-syslog-init
+    container_name: netops-stack-clickstack-syslog-init
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         sleep 5
-        clickhouse-client --host gnp-stack-clickstack < /init/syslog.sql
+        clickhouse-client --host netops-stack-clickstack < /init/syslog.sql
         echo "syslog table ready"
     volumes:
       - ./clickhouse/init/syslog.sql:/init/syslog.sql:ro
@@ -33,7 +33,7 @@ services:
 
   vector:
     image: timberio/vector:0.38.0-debian
-    container_name: gnp-stack-vector
+    container_name: netops-stack-vector
     volumes:
       - ./vector/vector.toml:/etc/vector/vector.toml:ro
     command: ["--config", "/etc/vector/vector.toml"]

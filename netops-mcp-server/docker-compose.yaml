@@ -1,0 +1,30 @@
+# Deploy only the NetOps MCP server.
+# Usage: cd netops-mcp-server && docker compose up -d
+# Ensure .env exists with NETBOX_URL, PROMETHEUS_URL, etc.
+# From inside the container, use host.docker.internal to reach services on the host
+# (e.g. PROMETHEUS_URL=http://host.docker.internal:9090).
+#
+# Reachable from LibreChat: this service joins network 'mcp-server' (LibreChat docker-compose.override.yaml).
+# In LibreChat MCP config use: http://netops-mcp-server:8010/mcp
+# Ensure the network exists first: docker network create mcp-server (if LibreChat hasn't created it).
+networks:
+  netops-mcp-network:
+    name: netops-mcp-network
+    driver: bridge
+  mcp-server:
+    external: true
+
+services:
+  netops-mcp-server:
+    build: .
+    image: netops-mcp-server:latest
+    container_name: netops-mcp-server
+    env_file: .env
+    ports:
+      - "8010:8010"
+    networks:
+      - netops-mcp-network
+      - mcp-server
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

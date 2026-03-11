@@ -11,7 +11,7 @@ import urllib.request
 
 from prometheus_client import REGISTRY, Gauge, start_http_server
 
-CLICKHOUSE_URL = os.environ.get("CLICKHOUSE_URL", "http://gnp-stack-clickhouse:8123")
+CLICKHOUSE_URL = os.environ.get("CLICKHOUSE_URL", "http://netops-stack-clickstack:8123")
 SCRAPE_PORT = int(os.environ.get("SCRAPE_PORT", "9099"))
 SCRAPE_INTERVAL = int(os.environ.get("SCRAPE_INTERVAL", "30"))
 

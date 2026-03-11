@@ -1,0 +1,170 @@
+---
+# Rollback devices to the collected baseline config (collected/<hostname>.txt).
+# Includes the same compare/diff logic (diff_baseline.yml) so the .diff file exists before we print or apply.
+#
+# Optional: Cisco "configure replace" for true replace (removes extra config) — see docs/CONFIG-REPLACE-ROLLBACK.md.
+#   -e rollback_use_configure_replace=true -e "rollback_baseline_url_base=http://GITLAB/-/raw/main/ansible/configs/baseline"
+#   or -e rollback_baseline_url=http://server/configs/baseline/HOSTNAME.txt (single host) or rollback_baseline_flash_path=flash:...
+#
+# Dry-run:  ansible-playbook ... rollback_configs.yml --check -e ansible_user=... -e ansible_password=...
+# Apply:    ansible-playbook ... rollback_configs.yml -e ansible_user=... -e ansible_password=...
+# Limit:   add -l sw11-1
+
+- name: Rollback to baseline config
+  hosts: all
+  gather_facts: false
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: 'false'
+
+  vars:
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    collected_dir: "{{ lookup('env', 'COLLECTED_DIR') | default('configs/baseline', true) }}"
+    baseline_file: "{{ collected_dir }}/{{ inventory_hostname }}.txt"
+    baseline_src: "../{{ collected_dir }}/{{ inventory_hostname }}.txt"
+    baseline_src_abs: "{{ playbook_dir }}/../{{ collected_dir }}/{{ inventory_hostname }}.txt"
+    baseline_temp: "/tmp/baseline_rollback_{{ inventory_hostname }}.txt"
+    diff_output_file: "{{ collected_dir }}/{{ inventory_hostname }}.diff"
+    diff_output_file_abs: "{{ playbook_dir }}/../{{ collected_dir }}/{{ inventory_hostname }}.diff"
+    temp_current: "/tmp/current_{{ inventory_hostname }}.txt"
+    # Optional: use Cisco "configure replace" for true replace (removes extra config). Override with -e.
+    rollback_use_configure_replace: false
+    rollback_baseline_url: ""
+    rollback_baseline_url_base: ""   # e.g. http://gitlab/-/raw/main/ansible/configs/baseline → per-host: {{ base }}/{{ inventory_hostname }}.txt
+    rollback_baseline_flash_path: ""
+    rollback_baseline_url_resolved: "{{ (rollback_baseline_url | default('') | trim) if (rollback_baseline_url | default('') | trim != '') else ((rollback_baseline_url_base | default('') | trim | regex_replace('/$', '')) ~ '/' ~ inventory_hostname ~ '.txt') if (rollback_baseline_url_base | default('') | trim != '') else '' }}"
+
+  tasks:
+    - name: Include compare/diff logic (writes .diff when config differs)
+      ansible.builtin.include_tasks: diff_baseline.yml
+
+    - name: No diff — skip rollback for {{ inventory_hostname }}
+      ansible.builtin.debug:
+        msg: "Config matches baseline. No rollback needed."
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 0
+
+    - name: Backup running config before rollback (on controller)
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and not ansible_check_mode
+      block:
+        - name: Get current running config for backup
+          cisco.ios.ios_command:
+            commands:
+              - terminal length 0
+              - show running-config
+          register: _pre_rollback_config
+
+        - name: Write pre-rollback backup to configs/baseline/{{ inventory_hostname }}.pre_rollback
+          ansible.builtin.copy:
+            content: "{{ _pre_rollback_config.stdout[1] | default(_pre_rollback_config.stdout[0]) }}"
+            dest: "{{ collected_dir }}/{{ inventory_hostname }}.pre_rollback"
+            mode: "0644"
+          delegate_to: localhost
+
+    - name: Copy baseline to temp file (avoids deprecated template-in-src; baseline from device keeps idempotent diff)
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and not ansible_check_mode
+      ansible.builtin.copy:
+        src: "{{ baseline_src_abs }}"
+        dest: "{{ baseline_temp }}"
+        mode: "0600"
+      delegate_to: localhost
+
+    # --- Optional: Cisco "configure replace" (true replace: adds and removes to match file; no VLAN parsing needed) ---
+    - name: Rollback via configure replace (device must have baseline at URL or on flash)
+      when: >
+        baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and not ansible_check_mode
+        and rollback_use_configure_replace | default(false) | bool
+        and (rollback_baseline_url_resolved | default('') | trim != '' or rollback_baseline_flash_path | default('') | trim != '')
+      block:
+        - name: Run configure replace from URL
+          cisco.ios.ios_command:
+            commands:
+              - "configure replace {{ rollback_baseline_url_resolved }} force"
+          when: rollback_baseline_url_resolved | default('') | trim != ''
+          register: _replace_result
+          changed_when: true
+
+        - name: Run configure replace from flash
+          cisco.ios.ios_command:
+            commands:
+              - "configure replace {{ rollback_baseline_flash_path }} force"
+          when: (rollback_baseline_flash_path | default('') | trim != '') and (rollback_baseline_url_resolved | default('') | trim == '')
+          register: _replace_result
+          changed_when: true
+
+        - name: Mark rollback applied (configure replace)
+          ansible.builtin.set_fact:
+            rollback_result: { changed: true }
+
+    # --- Default: ios_config replace block (does not remove config absent from baseline; remove extra VLANs first) ---
+    # Parse diff for VLANs to remove when NOT using configure replace
+    - name: Parse diff for VLANs to remove (in running config but not in baseline)
+      when: >
+        baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and not ansible_check_mode
+        and not (rollback_use_configure_replace | default(false) | bool
+          and (rollback_baseline_url_resolved | default('') | trim != '' or rollback_baseline_flash_path | default('') | trim != ''))
+      ansible.builtin.shell: |
+        grep -E '^\+vlan [0-9]+' "{{ diff_output_file_abs }}" | sed 's/^+vlan /no vlan /' | sort -u || true
+      register: vlans_to_remove_cmd
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Remove extra VLANs from device before applying baseline
+      when: >
+        baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and not ansible_check_mode
+        and not (rollback_use_configure_replace | default(false) | bool
+          and (rollback_baseline_url_resolved | default('') | trim != '' or rollback_baseline_flash_path | default('') | trim != ''))
+        and (vlans_to_remove_cmd.stdout_lines | default([]) | select('match', '^no vlan ') | list | length > 0)
+      cisco.ios.ios_config:
+        lines: "{{ vlans_to_remove_cmd.stdout_lines | default([]) | select('match', '^no vlan ') | list }}"
+        save_when: modified
+
+    - name: Apply baseline (rollback)
+      when: >
+        baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and not ansible_check_mode
+        and not (rollback_use_configure_replace | default(false) | bool
+          and (rollback_baseline_url_resolved | default('') | trim != '' or rollback_baseline_flash_path | default('') | trim != ''))
+      cisco.ios.ios_config:
+        src: "{{ baseline_temp }}"
+        replace: block
+        save_when: modified
+      register: rollback_result
+
+    - name: Report no baseline for {{ inventory_hostname }}
+      ansible.builtin.debug:
+        msg: "No baseline at {{ baseline_file }}. Run collect_configs.yml first."
+      when: not baseline_stat.stat.exists | default(true)
+
+    - name: Show diff (check mode) — +/- lines only
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and ansible_check_mode
+      block:
+        - name: Grep +/- lines from diff file (exclude ---/+++ headers and timestamp comment lines)
+          ansible.builtin.shell: |
+            grep -E '^[+-]' "{{ diff_file_abs }}" | grep -v -E '^[+-]{3}' | grep -v 'NVRAM config last updated' || true
+          vars:
+            diff_file_abs: "{{ playbook_dir }}/../{{ collected_dir }}/{{ inventory_hostname }}.diff"
+          register: _diff_plus_minus
+          changed_when: false
+          delegate_to: localhost
+          check_mode: false   # run in --check so we have output to print
+
+        - name: Clarify diff meaning for rollback
+          ansible.builtin.debug:
+            msg: "+ = in running config (would be REMOVED by rollback); - = in baseline (would be ADDED by rollback)."
+          when: (_diff_plus_minus.stdout_lines | default((_diff_plus_minus.stdout | default('') | trim | split('\n')))) | default([]) | reject('equalto', '') | list | length > 0
+
+        - name: Print changes
+          ansible.builtin.debug:
+            msg: "{{ item }}"
+          loop: "{{ (_diff_plus_minus.stdout_lines | default((_diff_plus_minus.stdout | default('') | trim | split('\n')))) | default([]) | reject('equalto', '') | list }}"
+
+    - name: Would apply rollback ({{ inventory_hostname }}) — run without --check to apply
+      ansible.builtin.debug:
+        msg: "Rollback would be applied (check mode). Run without --check to apply."
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and ansible_check_mode
+
+    - name: Rollback complete for {{ inventory_hostname }}
+      ansible.builtin.debug:
+        msg: "Rollback applied. Backup at configs/baseline/{{ inventory_hostname }}.pre_rollback"
+      when: baseline_stat.stat.exists | default(false) and diff_result.rc == 1 and rollback_result is changed and not ansible_check_mode
+
+    # .diff files are only in the repo; removal from repo is done in rollback_apply CI (git commit).

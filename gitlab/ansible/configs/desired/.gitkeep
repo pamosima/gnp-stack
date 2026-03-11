@@ -1,0 +1,2 @@
+# Keeps ansible/configs/desired/ in Git. Add <hostname>.txt per device (e.g. sw11-1.txt).
+# MCP or user updates these files; pipeline runs apply_config.yml --check then manual apply.

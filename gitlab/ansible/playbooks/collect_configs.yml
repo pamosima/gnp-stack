@@ -1,0 +1,66 @@
+---
+# Collect running config from network devices and write to configs/baseline/<hostname>.txt
+# Inventory: NetBox only — use -i ansible/inventory/nb_inventory.yml (see LTROPS-2341 pattern).
+# SSH credentials: pass at run time (see https://netboxlabs.com/blog/getting-started-with-network-automation-netbox-ansible/)
+#   Local: ansible-playbook ... -u admin -k   (prompts for password)
+#   Or:   -e ansible_user=admin -e ansible_password=...
+#   CI:   GitLab passes -e ansible_user= -e ansible_password= from CI/CD variables.
+#
+# Run from repo root:
+#   ansible-playbook ansible/playbooks/collect_configs.yml -i ansible/inventory/nb_inventory.yml -u admin -k
+# Limit to one host or group (NetBox group_by: sites, device_roles):
+#   ansible-playbook ansible/playbooks/collect_configs.yml -i ansible/inventory/nb_inventory.yml -l core-01 -u admin -k
+
+- name: Collect device running configs
+  hosts: all
+  gather_facts: false
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: 'false'
+
+  vars:
+    # Force network_cli and IOS so the right connection and modules are used (override any inventory default)
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: cisco.ios.ios
+    collected_dir: "{{ lookup('env', 'COLLECTED_DIR') | default('configs/baseline', true) }}"
+    collected_timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
+
+  tasks:
+    - name: Create baseline directory (on controller)
+      ansible.builtin.file:
+        path: "{{ collected_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Collect running config (Cisco IOS / IOS-XE)
+      when: ansible_network_os is defined and (ansible_network_os == 'cisco.ios.ios' or ansible_network_os is search('ios'))
+      block:
+        - name: Run show running-config (disable paging for full output)
+          cisco.ios.ios_command:
+            commands:
+              - terminal length 0
+              - show running-config
+          register: running_config
+
+        - name: Write running config to file (on controller)
+          ansible.builtin.copy:
+            content: "{{ running_config.stdout[1] | default(running_config.stdout[0]) }}"
+            dest: "{{ collected_dir }}/{{ inventory_hostname }}.txt"
+            mode: "0644"
+          delegate_to: localhost
+
+    - name: Collect running config (generic network_cli)
+      when: ansible_network_os is not defined or not (ansible_network_os == 'cisco.ios.ios' or ansible_network_os is search('ios'))
+      block:
+        - name: Run show running-config via cli_command
+          ansible.netcommon.cli_command:
+            command: show running-config
+          register: running_config
+
+        - name: Write running config to file (generic, on controller)
+          ansible.builtin.copy:
+            content: "{{ running_config.stdout[0] if (running_config.stdout is sequence and running_config.stdout | length > 0) else (running_config.stdout | default('')) }}"
+            dest: "{{ collected_dir }}/{{ inventory_hostname }}.txt"
+            mode: "0644"
+          delegate_to: localhost

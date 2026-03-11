@@ -1,0 +1,337 @@
+Building configuration...
+
+Current configuration : 11388 bytes
+!
+! Last configuration change at 09:03:28 UTC Fri Feb 27 2026
+! NVRAM config last updated at 10:32:28 UTC Fri Feb 27 2026 by netadmin
+!
+version 17.15
+service timestamps debug datetime msec
+service timestamps log datetime msec
+!
+hostname sw13-1
+!
+!
+vrf definition Mgmt-vrf
+ !
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv6
+ exit-address-family
+!
+no logging console
+aaa new-model
+!
+!
+aaa authentication login default local
+aaa authorization exec default local 
+!
+!
+aaa session-id common
+switch 1 provision c9kv-uadp-8p
+!
+!
+!
+!
+!
+!
+!
+!
+!
+ip domain name dcloud.local
+!
+ip dhcp pool webuidhcp
+!
+!
+!
+login on-success log
+ipv6 nd cache expire refresh
+ipv6 unicast-routing
+vtp domain cisco
+vtp mode transparent
+!
+!
+!
+!
+!
+!
+!
+!
+crypto pki trustpoint SLA-TrustPoint
+ enrollment pkcs12
+ revocation-check crl
+ hash sha256
+!
+crypto pki trustpoint pnplabel
+ enrollment url bootflash://PnP-cert_21_50_40_UTC_Fri_Jan_10_2025
+ revocation-check none
+ hash sha256
+!
+crypto pki trustpoint TP-self-signed-1947953948
+ enrollment selfsigned
+ subject-name cn=IOS-Self-Signed-Certificate-1947953948
+ revocation-check none
+ rsakeypair TP-self-signed-1947953948
+ hash sha512
+!
+!
+crypto pki certificate chain SLA-TrustPoint
+ certificate ca 01
+  30820321 30820209 A0030201 02020101 300D0609 2A864886 F70D0101 0B050030 
+  32310E30 0C060355 040A1305 43697363 6F312030 1E060355 04031317 43697363 
+  6F204C69 63656E73 696E6720 526F6F74 20434130 1E170D31 33303533 30313934 
+  3834375A 170D3338 30353330 31393438 34375A30 32310E30 0C060355 040A1305 
+  43697363 6F312030 1E060355 04031317 43697363 6F204C69 63656E73 696E6720 
+  526F6F74 20434130 82012230 0D06092A 864886F7 0D010101 05000382 010F0030 
+  82010A02 82010100 A6BCBD96 131E05F7 145EA72C 2CD686E6 17222EA1 F1EFF64D 
+  CBB4C798 212AA147 C655D8D7 9471380D 8711441E 1AAF071A 9CAE6388 8A38E520 
+  1C394D78 462EF239 C659F715 B98C0A59 5BBB5CBD 0CFEBEA3 700A8BF7 D8F256EE 
+  4AA4E80D DB6FD1C9 60B1FD18 FFC69C96 6FA68957 A2617DE7 104FDC5F EA2956AC 
+  7390A3EB 2B5436AD C847A2C5 DAB553EB 69A9A535 58E9F3E3 C0BD23CF 58BD7188 
+  68E69491 20F320E7 948E71D7 AE3BCC84 F10684C7 4BC8E00F 539BA42B 42C68BB7 
+  C7479096 B4CB2D62 EA2F505D C7B062A4 6811D95B E8250FC4 5D5D5FB8 8F27D191 
+  C55F0D76 61F9A4CD 3D992327 A8BB03BD 4E6D7069 7CBADF8B DF5F4368 95135E44 
+  DFC7C6CF 04DD7FD1 02030100 01A34230 40300E06 03551D0F 0101FF04 04030201 
+  06300F06 03551D13 0101FF04 05300301 01FF301D 0603551D 0E041604 1449DC85 
+  4B3D31E5 1B3E6A17 606AF333 3D3B4C73 E8300D06 092A8648 86F70D01 010B0500 
+  03820101 00507F24 D3932A66 86025D9F E838AE5C 6D4DF6B0 49631C78 240DA905 
+  604EDCDE FF4FED2B 77FC460E CD636FDB DD44681E 3A5673AB 9093D3B1 6C9E3D8B 
+  D98987BF E40CBD9E 1AECA0C2 2189BB5C 8FA85686 CD98B646 5575B146 8DFC66A8 
+  467A3DF4 4D565700 6ADF0F0D CF835015 3C04FF7C 21E878AC 11BA9CD2 55A9232C 
+  7CA7B7E6 C1AF74F6 152E99B7 B1FCF9BB E973DE7F 5BDDEB86 C71E3B49 1765308B 
+  5FB0DA06 B92AFE7F 494E8A9E 07B85737 F3A58BE1 1A48A229 C37C1E69 39F08678 
+  80DDCD16 D6BACECA EEBC7CF9 8428787B 35202CDC 60E4616A B623CDBD 230E3AFB 
+  418616A9 4093E049 4D10AB75 27E86F73 932E35B5 8862FDAE 0275156F 719BB2F0 
+  D697DF7F 28
+  	quit
+crypto pki certificate chain pnplabel
+ certificate ca 32E463FA7895EBF3495BBA6739934E42677C54C1
+  308203A5 3082028D A0030201 02021432 E463FA78 95EBF349 5BBA6739 934E4267 
+  7C54C130 0D06092A 864886F7 0D01010B 05003062 312D302B 06035504 030C2433 
+  30363635 6465392D 39373564 2D613866 392D3635 62372D62 62323765 32333366 
+  30346131 16301406 0355040A 0C0D4369 73636F20 53797374 656D7331 19301706 
+  0355040B 0C104369 73636F20 444E4120 43656E74 6572301E 170D3233 30393231 
+  31363237 33375A17 0D323630 36313731 36323733 375A3062 312D302B 06035504 
+  030C2433 30363635 6465392D 39373564 2D613866 392D3635 62372D62 62323765 
+  32333366 30346131 16301406 0355040A 0C0D4369 73636F20 53797374 656D7331 
+  19301706 0355040B 0C104369 73636F20 444E4120 43656E74 65723082 0122300D 
+  06092A86 4886F70D 01010105 00038201 0F003082 010A0282 010100E1 A880D9A6 
+  1BEB006D CFAFFFDA 76BBA1F5 DB100DF0 0F139A41 CE59F406 BFCCF4F9 2984A3BD 
+  CE93D526 99C9812B 668E980B 82F8F26F C6A20012 FCF07DAB 9E2EFFC8 9D1FCE91 
+  0392C229 548D57AC B959C4ED CD49090F 48BD22A7 CB37A966 BD94CFD5 DEE7E331 
+  C3615C48 FA9DDDA1 F1AA9CCF 1642E4EA 0B8706AE 70205A18 6EC0AB51 44D8F6EA 
+  B77BCA95 372BC14A F61AB3F0 4DE2EAE7 77DE661A 1A97D9E8 230AD35E 47398238 
+  56B85B37 D2A8B024 0C90120F EF15BC07 D7EF31EE AB9CE408 02984923 0F5423CF 
+  2B995855 36D2FFBB 733151BC 6CCF06E6 4A19AF9B E9746DF4 51EE872C 4A2BCD21 
+  A67964BD 66C1D1AD 17E145E1 6ACD6771 441362EE EC4227EC DA690502 03010001 
+  A3533051 301D0603 551D0E04 1604143E 3B8FB963 93D05463 D4006D23 4B59729B 
+  9740F430 1F060355 1D230418 30168014 3E3B8FB9 6393D054 63D4006D 234B5972 
+  9B9740F4 300F0603 551D1301 01FF0405 30030101 FF300D06 092A8648 86F70D01 
+  010B0500 03820101 00CA6CA2 393ED56D 59930299 42516162 EC22A579 86CED681 
+  F817D3FC E5D27515 9A8FC244 69E0FB85 6E772D6D F8DD51FB E118498E E8530110 
+  9F5995FE 600B31B3 5E1A77FE 5E254405 FD3DB80F C7C3D509 89609387 25A02043 
+  FECBCF15 7A93F6D9 938890D7 EF4C4218 A90AD9E4 590A5B17 1A3567F0 D63A0340 
+  3101B58D A1E9EA1A 4EC39B79 4A2FE124 818731DC DDF3218D 53DE8186 3075773A 
+  B6891A09 9BA8BC6D DF8CD50C 8828C752 7A1E02D8 7E7D3276 A7FB6C8F F3BD3684 
+  BDBBDAC5 16609784 E48DFA48 D1DB49DC C65774C7 8B57F342 DFA4E991 0D656C21 
+  84C76036 1833F7F1 500E1A42 5299A289 237E8A6B 40CA2281 F0EE528D 8F9E02A3 
+  7F25B35E F871D5A9 8D
+  	quit
+crypto pki certificate chain TP-self-signed-1947953948
+ certificate self-signed 01
+  30820330 30820218 A0030201 02020101 300D0609 2A864886 F70D0101 0D050030 
+  31312F30 2D060355 04030C26 494F532D 53656C66 2D536967 6E65642D 43657274 
+  69666963 6174652D 31393437 39353339 3438301E 170D3236 30323230 31303038 
+  33315A17 0D333630 32323031 30303833 315A3031 312F302D 06035504 030C2649 
+  4F532D53 656C662D 5369676E 65642D43 65727469 66696361 74652D31 39343739 
+  35333934 38308201 22300D06 092A8648 86F70D01 01010500 0382010F 00308201 
+  0A028201 01009754 F64335FB F7B9B832 41A28581 EC3A1ACE 498AF720 B9184507 
+  B76701D7 3CD6E3F9 C5D71799 849D936E CFA8736C CCF734F3 91ECD4F2 5119BB04 
+  063F901F ECD37643 2CA024D1 DBD727A3 AC719D7A 2CAF948B 4A604755 743D4498 
+  916C08EA DE15F83C A7BA521B 5ABD80B3 E7498399 1C0EF20E 5AA3AF32 77DE9326 
+  6462C5FE E66F0F7B 541600B7 D6A7BF51 E341B4F4 4F11C59A 698152D7 74D10545 
+  FDA29574 A1E5870F CEFE7866 A1864A82 67668B02 7E25809E 131E79FE 687D7E42 
+  B19B51E9 C47986FE A7D32010 C2C7F40A 0B248AE6 B6F53436 EFCED71B 770C68FE 
+  C5CD77D6 40D7A895 651A0A90 C1EC85B8 E388A3A7 CF18270D B7D75003 E2D73F1B 
+  DAD29973 B8010203 010001A3 53305130 1D060355 1D0E0416 04146AEA D5C2B108 
+  C119BECC 5A1856E5 FC3B03D3 2724301F 0603551D 23041830 1680146A EAD5C2B1 
+  08C119BE CC5A1856 E5FC3B03 D3272430 0F060355 1D130101 FF040530 030101FF 
+  300D0609 2A864886 F70D0101 0D050003 82010100 5F7DA524 558C59FE 5BD80053 
+  38AAC6F2 C57AF671 1BB6E994 D4E87F28 A5B335F8 F512003D 6E5D60E5 1BC7AB48 
+  9612B573 345A4A0E 4AACD1D1 E2CE314C 0DBDF97F 7166BD5D 552E9528 B4C9BCE5 
+  2D1DE68D E3A548E5 FD64B4E3 2A7CFBC8 0D97207F C644C5F8 C7CBACA9 D3D182BE 
+  34ED3349 669FFECC 206A8CAC 9A5D1EEC 6D4DE9CD 77B2D3A7 B8DA0013 8E63DC16 
+  067019A1 3309DFB3 E5CB4B55 DA120A33 EC8755E2 A932E626 51DD4FAD 2E2BAD66 
+  0412E089 3A0B2B64 240C3E65 9F5F94B7 F30273A9 7B03CFAB 5CB43D4F 804BD3D4 
+  D04321F6 DB75C7F0 944A5A20 4DC09416 4212299A 47FEBDAE B2D89D11 83D5A639 
+  FD9C3DE1 1017DA93 36CA1CF0 AB7BF331 B0DF9CA9
+  	quit
+!
+!
+license boot level network-advantage addon dna-advantage
+memory free low-watermark processor 74862
+!
+diagnostic bootup level minimal
+!
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+!
+!
+!
+enable secret 9 $9$3iyvNzMV5.kcwU$4f3BoLbrrpaTROVjjbKu2Ul7Os4GDRPjpe.C2V4K5Jc
+!
+username netadmin privilege 15 secret 9 $9$3IVLMjpt3WCFY.$Bmdj81XOj2ZJBR2m0gl9KnQX6AO46/wg1ZC60rLqwQ2
+!
+redundancy
+ mode sso
+crypto engine compliance shield disable
+!
+!
+!
+!
+!
+vlan 99
+ name MGMT
+!
+!
+class-map match-any system-cpp-police-ewlc-control
+ description EWLC Control 
+class-map match-any system-cpp-police-topology-control
+ description Topology control
+class-map match-any system-cpp-police-sw-forward
+ description Sw forwarding, L2 LVX data packets, LOGGING, Transit Traffic
+class-map match-any system-cpp-default
+ description EWLC Data, Inter FED Traffic 
+class-map match-any system-cpp-police-sys-data
+ description Openflow, Exception, EGR Exception, NFL Sampled Data, RPF Failed
+class-map match-any system-cpp-police-punt-webauth
+ description Punt Webauth
+class-map match-any system-cpp-police-l2lvx-control
+ description L2 LVX control packets
+class-map match-any system-cpp-police-forus
+ description Forus traffic
+class-map match-any system-cpp-police-multicast-end-station
+ description MCAST END STATION
+class-map match-any system-cpp-police-forus-addr-resolution
+ description Forus address resolution
+class-map match-any system-cpp-police-high-rate-app
+ description High Rate Applications 
+class-map match-any system-cpp-police-multicast
+ description MCAST Data
+class-map match-any system-cpp-police-meraki-next-tunnel
+ description Meraki Next tunnel
+class-map match-any system-cpp-police-l2-control
+ description L2 control
+class-map match-any system-cpp-police-dot1x-auth
+ description DOT1X Auth
+class-map match-any system-cpp-police-data
+ description ICMP redirect, ICMP_GEN and BROADCAST
+class-map match-any system-cpp-police-stackwise-virt-control
+ description Stackwise Virtual OOB
+class-map match-any non-client-nrt-class
+class-map match-any system-cpp-police-routing-control
+ description Routing control and Low Latency
+class-map match-any system-cpp-police-protocol-snooping
+ description Protocol snooping
+class-map match-any system-cpp-police-dhcp-snooping
+ description DHCP snooping
+class-map match-any system-cpp-police-ios-routing
+ description L2 control, Topology control, Routing control, Low Latency
+class-map match-any system-cpp-police-system-critical
+ description System Critical and Gold Pkt
+class-map match-any system-cpp-police-ios-feature
+ description ICMPGEN,BROADCAST,ICMP,L2LVXCntrl,ProtoSnoop,PuntWebauth,MCASTData,Transit,DOT1XAuth,Swfwd,LOGGING,L2LVXData,ForusTraffic,ForusARP,McastEndStn,Openflow,Exception,EGRExcption,NflSampled,RpfFailed
+!
+policy-map system-cpp-policy
+!
+! 
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+interface GigabitEthernet0/0
+ vrf forwarding Mgmt-vrf
+ ip address dhcp
+ negotiation auto
+!
+interface GigabitEthernet1/0/1
+ switchport mode trunk
+!
+interface GigabitEthernet1/0/2
+!
+interface GigabitEthernet1/0/3
+!
+interface GigabitEthernet1/0/4
+!
+interface GigabitEthernet1/0/5
+!
+interface GigabitEthernet1/0/6
+!
+interface GigabitEthernet1/0/7
+!
+interface GigabitEthernet1/0/8
+!
+interface Vlan1
+ no ip address
+ shutdown
+!
+interface Vlan99
+ ip address dhcp
+!
+ip forward-protocol nd
+ip tcp mss 1280
+ip tcp window-size 212000
+ip http server
+ip http authentication local
+ip http secure-server
+ip ssh bulk-mode 131072
+!
+!
+logging host 198.18.134.22
+!
+!
+!
+!
+control-plane
+ service-policy input system-cpp-policy
+!
+!
+!
+line con 0
+ exec-timeout 0 0
+ stopbits 1
+line vty 0 1
+ exec-timeout 0 0
+ transport input ssh
+line vty 2
+ exec-timeout 0 0
+ length 0
+ transport input ssh
+line vty 3 4
+ exec-timeout 0 0
+ transport input ssh
+line vty 5 15
+ transport input ssh
+!
+ntp server 198.18.133.141
+!
+!
+!
+!
+!
+!
+pnp profile pnp-zero-touch
+ transport https ipv4 198.18.129.100 port 443
+!
+gnxi
+gnxi port 57400
+gnxi server
+netconf-yang
+end
